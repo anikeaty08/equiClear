@@ -1,0 +1,6 @@
+{
+    "program": "equiclear_claim.aleo",
+    "version": "0.1.0",
+    "description": "EquiClear Claim Module - Winner claims and refund processing",
+    "license": "MIT"
+}

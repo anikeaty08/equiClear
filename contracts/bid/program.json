@@ -1,0 +1,6 @@
+{
+    "program": "equiclear_bid.aleo",
+    "version": "0.1.0",
+    "description": "EquiClear Bid Module - Private bid submission and validation",
+    "license": "MIT"
+}

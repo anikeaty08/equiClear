@@ -1,0 +1,6 @@
+{
+    "program": "equiclear_auction.aleo",
+    "version": "0.1.0",
+    "description": "EquiClear Auction Module - Dutch auction with uniform clearing price",
+    "license": "MIT"
+}
