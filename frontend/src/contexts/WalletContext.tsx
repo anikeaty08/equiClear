@@ -6,6 +6,8 @@ import {
     useAccount,
     useDisconnect
 } from '@puzzlehq/sdk';
+import { Network } from '@puzzlehq/sdk-core';
+import { aleoWallet } from '@/services/wallet';
 
 interface WalletState {
     connected: boolean;
@@ -25,12 +27,7 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 
 export function WalletProvider({ children }: { children: React.ReactNode }) {
     return (
-        <PuzzleWalletProvider
-            dAppDescription="EquiClear - Decentralized Dutch Auctions"
-            dAppName="EquiClear"
-            dAppUrl="http://localhost:3000"
-            dAppIconURL="http://localhost:3000/logo.png"
-        >
+        <PuzzleWalletProvider>
             <WalletInner>{children}</WalletInner>
         </PuzzleWalletProvider>
     );
@@ -38,8 +35,29 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
 function WalletInner({ children }: { children: React.ReactNode }) {
     const { account } = useAccount();
+
+    // Configure connection request
+    const connectRequest = {
+        dAppInfo: {
+            name: "EquiClear",
+            description: "EquiClear - Decentralized Dutch Auctions",
+            iconUrl: "http://localhost:3000/logo.png"
+        },
+        permissions: {
+            // @ts-ignore - The structure might vary slightly by version, checking basic structure
+            programIds: {
+                [Network.AleoTestnet]: [
+                    'equiclear_balance.aleo',
+                    'equiclear_auction.aleo',
+                    'equiclear_bid.aleo',
+                    'equiclear_claim.aleo'
+                ]
+            }
+        }
+    };
+
     // @ts-ignore
-    const { connect, loading: connectLoading, error: connectError } = useConnect();
+    const { connect, loading: connectLoading, error: connectError } = useConnect(connectRequest);
     const { disconnect, loading: disconnectLoading } = useDisconnect();
 
     const [balance, setBalance] = useState(0);
@@ -49,6 +67,13 @@ function WalletInner({ children }: { children: React.ReactNode }) {
     const address = account ? account.address : null;
     const network = account ? account.network : 'testnet';
     const loading = connectLoading || disconnectLoading;
+
+    // Sync with AleoWallet service for non-React components
+    useEffect(() => {
+        if (aleoWallet) {
+            (aleoWallet as any).setAccount(address);
+        }
+    }, [address]);
 
     // Wrapper for connect to handle specific permissions
     const handleConnect = async () => {
@@ -72,7 +97,7 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             value={{
                 connected,
                 address,
-                balance,
+                balance: 0, // TODO: Fetch real balance using useRecords or useBalance
                 network,
                 loading,
                 providerType: 'puzzle', // Defaulting to puzzle/unified
