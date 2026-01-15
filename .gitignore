@@ -1,0 +1,36 @@
+# Dependencies
+node_modules/
+target/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Leo build outputs
+outputs/
+*.prover
+*.verifier
+*.avm
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Database
+*.db
+*.sqlite

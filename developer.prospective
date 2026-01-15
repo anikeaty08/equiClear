@@ -1,0 +1,352 @@
+EquiClear Architecture Explained for Users
+1️⃣ User Wallet (Aleo Extension Wallet)
+
+Every user must have an Aleo-compatible wallet installed in their browser (like MetaMask for Ethereum, but for Aleo).
+
+This wallet:
+
+Holds your tokens and private keys.
+
+Signs transactions privately, so you never share your keys with the website.
+
+Allows you to interact with the EquiClear platform, like depositing tokens, bidding in auctions, claiming items, or withdrawing funds.
+
+Think of it as your personal key to the auction system.
+
+2️⃣ Frontend Website
+
+This is the website users see and interact with.
+
+Built with React + Next.js, it displays all auctions, balances, and claims.
+
+Key features visible to users:
+
+Dashboard: See live and upcoming auctions.
+
+Auction Details: Check items, current price, remaining supply, and submit bids.
+
+Wallet Page: Deposit tokens to participate or withdraw them back.
+
+Claims Page: Claim won items or get refunds.
+
+Create Auction Page (for creators): Set up new auctions.
+
+The website does not store any sensitive info; it communicates with the Aleo wallet and blockchain.
+
+3️⃣ Connecting the Wallet
+
+Users must connect their Aleo wallet to the website.
+
+Once connected:
+
+The site can read your public wallet address and balances.
+
+It can send signed ZK transactions for bidding, deposits, and claims.
+
+Without the wallet, the user cannot participate in auctions.
+
+4️⃣ Deposit Tokens
+
+Before bidding, users deposit tokens from their wallet into EquiClear’s private on-chain balance system.
+
+This creates a hidden, private balance that is used to submit bids without revealing your total funds.
+
+Deposit is done via ZK transactions, which are signed by your wallet.
+
+The user sees their updated private balance on the Wallet page.
+
+5️⃣ Browsing Auctions
+
+The frontend shows all active and upcoming auctions.
+
+Public information includes:
+
+Item name
+
+Total supply
+
+Current clearing price (optional)
+
+Start and end times
+
+No sensitive bid info from other users is displayed — everything is private until settlement.
+
+6️⃣ Submitting a Bid
+
+On the auction detail page, the user enters:
+
+Quantity of items to buy
+
+Maximum price they’re willing to pay
+
+The bid is sent as a zero-knowledge transaction signed by the wallet.
+
+ZK proofs ensure:
+
+The user has enough private balance
+
+The bid respects auction rules
+
+The bid remains private from everyone else
+
+The user sees a pending bid status until the transaction is confirmed on-chain.
+
+7️⃣ Auction Price Decay & Settlement
+
+The auction is automatic and transparent, using a Dutch auction system:
+
+Price starts high and decays over time.
+
+The user can see the current public clearing price from the website (via indexer API).
+
+When the auction ends:
+
+ZK settlement calculates the final uniform clearing price.
+
+Winners and losers are determined.
+
+Private bids are still hidden until settlement is complete.
+
+8️⃣ Claiming Items / Refunds
+
+After settlement, users can claim won items or receive refunds for unsuccessful bids.
+
+This is done via a ZK transaction, signed by the wallet, which updates your private balance.
+
+The frontend shows:
+
+Items you’ve won
+
+Refunds available for withdrawal
+
+9️⃣ Withdrawing Tokens
+
+Users can withdraw any unused tokens from their private balance back to their wallet.
+
+This is done via a signed ZK transaction, keeping the process private but secure.
+
+After withdrawal, the wallet balance is updated.
+
+10️⃣ Off-Chain Indexer (Invisible to Users)
+
+While users don’t interact with it directly, the indexer is critical:
+
+It listens to the blockchain for auction events.
+
+Provides safe public data for the frontend, like auction lists, prices, and statuses.
+
+Ensures the frontend is fast and responsive without revealing sensitive bid information.
+
+11️⃣ Summary User Flow
+
+Install Aleo wallet → create/testnet account.
+
+Visit EquiClear website → connect wallet.
+
+Deposit tokens into EquiClear balance.
+
+Browse auctions → select one to participate.
+
+Submit bid → ZK transaction keeps bid private.
+
+Auction progresses → price decays automatically.
+
+Auction ends → ZK settlement determines winners.
+
+Claim won items / receive refunds.
+
+Withdraw tokens back to wallet.
+
+✅ Key Takeaways for Users:
+
+Wallet is required for all interactions.
+
+Bids are private thanks to ZK proofs.
+
+Frontend shows only public info — never exposes your bid amounts.
+
+Every transaction is signed and verified on Aleo testnet.
+
+The off-chain indexer powers real-time updates on the website.
+
+If you want, I can draw a full visual diagram showing wallet → frontend → Aleo programs → indexer → back to user, so it’s super clear how everything connects in plain language.
+
+Do you want me to make that diagram next?
+
+now from a developer prospective lit out the tools  and which sdk to follow 
+
+Absolutely! Let’s shift gears and look at EquiClear from a developer’s perspective. I’ll break it down line by line: which tools, SDKs, and frameworks you’ll need to develop, test, and deploy the project on Aleo testnet.
+
+EquiClear Developer Toolkit & SDKs
+1️⃣ Programming Languages
+
+Leo:
+
+The official language for Aleo smart contracts.
+
+Used for writing on-chain programs: auction logic, bid validation, balance management, and claim/refund logic.
+
+Type-safe, strongly typed, with built-in zk-SNARK proof support.
+
+Rust:
+
+Optional for off-chain components like the indexer or custom backend.
+
+Can handle event subscriptions, aggregation, and API endpoints for frontend.
+
+TypeScript / JavaScript:
+
+For frontend development (React + Next.js).
+
+Integrates with Aleo wallets for submitting ZK transactions.
+
+2️⃣ Core Aleo Tools
+
+Leo Compiler:
+
+leo --version
+
+
+Compiles .leo files into .wasm binaries for deployment.
+
+Leo CLI Wallet (optional, advanced users):
+
+Create addresses, manage tokens, and test transactions.
+
+Can interact with contracts locally or on testnet.
+
+Aleo Testnet Node:
+
+Run locally to test transactions:
+
+aleo run
+
+
+Allows rapid testing of contracts before deployment.
+
+3️⃣ Wallet Integration
+
+Aleo Browser Extension Wallet
+
+Official wallet for user interactions on frontend.
+
+Handles signing transactions and submitting ZK proofs.
+
+Aleo Wallet SDK (JavaScript/TypeScript)
+
+Provides frontend APIs to:
+
+Connect user wallet
+
+Fetch balances
+
+Submit ZK transactions to contracts
+
+Example methods:
+
+import { connectWallet } from 'aleo-wallet-sdk';
+const wallet = await connectWallet();
+wallet.submitTransaction({ ... });
+
+4️⃣ Frontend Tools
+
+React + Next.js:
+
+Pages & components structure for auction dashboard, wallet management, claim page, etc.
+
+Tailwind CSS:
+
+Styling and responsive layouts.
+
+GraphQL / REST:
+
+To fetch auction events from the indexer.
+
+5️⃣ Off-Chain Components (Optional but Recommended)
+
+Indexer / Event Listener:
+
+Listens for on-chain events: auction creation, bid submission, auction end.
+
+Serves as the frontend API to show live auction data.
+
+Tools:
+
+Rust + Tokio (async) or Node.js
+
+Database (SQLite / PostgreSQL) to store indexed events
+
+Purpose: Keeps frontend fast and avoids exposing sensitive ZK bid info.
+
+6️⃣ Deployment & Build Tools
+
+Cargo / Rust Build Tools:
+
+Needed if using Rust for indexer or off-chain services.
+
+Leo Build & Deploy Commands:
+
+leo build
+leo deploy <contract>.wasm --url https://testnet.aleo.org
+
+
+Frontend Build:
+
+npm install
+npm run dev   # for local dev
+npm run build # production
+
+7️⃣ Testing Tools
+
+Leo Unit Tests:
+
+Write tests inside .leo files using #[test].
+
+Run with:
+
+leo test
+
+
+Frontend Testing:
+
+Jest / React Testing Library for components.
+
+Mock wallet connections for testing transactions.
+
+Local Aleo Node:
+
+Test ZK transactions without spending testnet tokens.
+
+8️⃣ Optional Utilities
+
+Zero-Knowledge Helpers:
+
+For verifying proofs off-chain (e.g., in indexer).
+
+Postman / GraphQL Playground:
+
+Test API endpoints served by indexer.
+
+Environment Management:
+
+.env for Aleo testnet URLs, token IDs, contract addresses.
+
+9️⃣ Recommended SDK / Workflow
+
+Write smart contracts in Leo (auction, bid, balance, claim).
+
+Compile using Leo → produces .wasm binaries.
+
+Test contracts locally using leo test and aleo run.
+
+Deploy contracts to Aleo testnet using leo deploy.
+
+Build frontend with React + Next.js:
+
+Integrate Aleo wallet SDK for transaction signing.
+
+Connect to indexer API for auction state and history.
+
+Use indexer (Rust or Node.js) to subscribe to blockchain events and serve data to frontend.
+
+Test end-to-end: wallet → deposit → bid → auction → claim → withdraw.

@@ -1,0 +1,61 @@
+  we r in the rooot folder 
+├── contracts/                 # On-chain Aleo programs
+│   ├── auction/               # Auction module
+│   │   ├── src/
+│   │   │   ├── auction.leo     # Auction creation, price decay, settlement
+│   │   │   ├── types.leo       # Auction struct, enums
+│   │   └── Cargo.toml
+│   ├── bid/                   # Bid submission and validation
+│   │   ├── src/
+│   │   │   ├── bid.leo         # Private bid logic
+│   │   │   ├── types.leo       # Bid struct
+│   │   └── Cargo.toml
+│   ├── balance/               # Token deposit / withdraw module
+│   │   ├── src/
+│   │   │   ├── balance.leo     # Deposit, withdraw, ZK proofs
+│   │   │   ├── types.leo       # Balance struct
+│   │   └── Cargo.toml
+│   └── claim/                 # Winner claim & refund module
+│       ├── src/
+│       │   ├── claim.leo       # Claim & refund logic
+│       │   ├── types.leo       # Claim struct
+│       └── Cargo.toml
+│
+├── indexer/                   # Off-chain indexer (optional but recommended)
+│   ├── src/
+│   │   ├── events.rs           # Subscribe to blockchain events
+│   │   ├── service.rs          # API for frontend
+│   │   └── state.rs            # Indexed auction data
+│   └── Cargo.toml
+│
+├── frontend/                  # React + Next.js frontend
+│   ├── public/                # Static assets
+│   ├── src/
+│   │   ├── pages/
+│   │   │   ├── index.tsx       # Dashboard
+│   │   │   ├── auction/[id].tsx # Auction Detail
+│   │   │   ├── wallet.tsx      # Deposit / Withdraw
+│   │   │   ├── claims.tsx      # Claim page
+│   │   │   ├── create-auction.tsx # Auction creation
+│   │   │   └── analytics.tsx   # Analytics page (optional)
+│   │   ├── components/
+│   │   │   ├── AuctionCard.tsx
+│   │   │   ├── AuctionGrid.tsx
+│   │   │   ├── BidForm.tsx
+│   │   │   ├── BalanceCard.tsx
+│   │   │   ├── DepositForm.tsx
+│   │   │   ├── WithdrawForm.tsx
+│   │   │   ├── ClaimList.tsx
+│   │   │   └── RefundCard.tsx
+│   │   ├── utils/              # Helper functions
+│   │   └── services/           # API and Aleo interaction functions
+│   └── package.json
+│
+├── shared/                     # Shared types & constants
+│   ├── src/
+│   │   ├── constants.leo       # Token IDs, auction settings
+│   │   └── utils.leo           # Shared helper functions
+│   └── Cargo.toml
+│
+├── README.md
+└── .gitignore

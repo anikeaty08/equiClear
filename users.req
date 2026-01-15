@@ -1,0 +1,259 @@
+To interact with EquiClear on Aleo testnet:
+
+The user must have an Aleo testnet wallet.
+
+Wallet options (testnet-friendly):
+
+Aleo Web Wallet / Browser Extension(like puzzle and etc )
+
+Leo CLI wallet (advanced users)
+
+
+2️⃣ Typical User Journey on EquiClear Website
+
+Here’s the step-by-step interaction flow:
+
+Step 1: Connect Wallet
+
+Frontend Page: / (Dashboard)
+Component: ConnectWalletModal
+
+Process:
+
+User clicks “Connect Wallet” button.
+
+Frontend triggers Aleo wallet SDK:
+
+import { connectWallet } from 'aleo-wallet-sdk';
+
+const wallet = await connectWallet();
+
+
+Wallet requests permission to connect.
+
+Frontend stores wallet session for transaction signing.
+
+UI Notes:
+
+Show wallet address once connected.
+
+Show network status (Testnet/Mainnet).
+
+Step 2: Deposit Tokens
+
+Frontend Page: /wallet
+Component: DepositForm
+
+Process:
+
+User selects token (e.g., EquiClear payment token).
+
+Enter amount to deposit.
+
+Submit deposit → triggers ZK transaction to Balance module on-chain:
+
+await wallet.submitTransaction({
+  program: "equiclear_balance",
+  function: "deposit",
+  inputs: {
+    token_id: "<token_id>",
+    amount: depositAmount
+  }
+});
+
+
+Transaction is confirmed on Aleo testnet.
+
+Private balance record is created on-chain.
+
+UI Notes:
+
+Show current balance.
+
+Show pending transactions while ZK proof is mined.
+
+Step 3: Browse Auctions
+
+Frontend Page: / (Dashboard)
+Component: AuctionGrid + AuctionCard
+
+Fetch auctions from off-chain indexer (read-only)
+
+Display only public info:
+
+Auction name
+
+Total supply
+
+Current clearing price (optional)
+
+Start/end times
+
+UI Tips:
+
+Live countdown for ongoing auctions
+
+Filters: Live / Upcoming / Settled
+
+Step 4: Submit Bid
+
+Frontend Page: /auction/[id]
+Component: BidForm
+
+Process:
+
+User enters:
+
+Quantity
+
+Maximum bid price
+
+Form triggers ZK transaction to Bid module:
+
+await wallet.submitTransaction({
+  program: "equiclear_bid",
+  function: "place_bid",
+  inputs: {
+    auction_id: selectedAuction.id,
+    quantity: bidQuantity,
+    max_price: maxPrice
+  }
+});
+
+
+Wallet signs the transaction → sends it to Aleo testnet.
+
+ZK proof ensures:
+
+User has enough private balance
+
+Bid respects floor price
+
+Auction exists
+
+UI Notes:
+
+Display pending bid until confirmed
+
+Do not reveal bid value publicly
+
+Step 5: Auction Progress & Settlement
+
+Auction runs automatically; price decays over time (on-chain).
+
+Users can monitor current public clearing price via indexer API.
+
+When auction ends:
+
+ZK settlement calculates final clearing price
+
+Winners & losers determined
+
+Claim / refund records generated
+
+Step 6: Claim Auction / Refund
+
+Frontend Page: /claims
+Component: ClaimList + ClaimButton
+
+Process:
+
+User clicks “Claim” for winning bids.
+
+Wallet submits transaction to Claim module:
+
+await wallet.submitTransaction({
+  program: "equiclear_claim",
+  function: "claim_item",
+  inputs: {
+    auction_id: auction.id
+  }
+});
+
+
+Transaction finalizes:
+
+Items transferred to user (or NFT minted)
+
+Refunds processed for losing bids
+
+UI Notes:
+
+Display claimed items
+
+Display refunded token amounts
+
+Step 7: Withdraw Tokens
+
+Frontend Page: /wallet
+Component: WithdrawForm
+
+After claiming or cancelling bids, user can withdraw tokens back to their wallet:
+
+await wallet.submitTransaction({
+  program: "equiclear_balance",
+  function: "withdraw",
+  inputs: {
+    token_id: "<token_id>",
+    amount: withdrawAmount
+  }
+});
+
+
+Transaction reduces private balance and transfers tokens back to wallet.
+
+3️⃣ Key Frontend Integration Notes
+
+Wallet SDK Required
+
+Users must sign all transactions
+
+Frontend never holds private keys
+
+Private Bids & ZK Proofs
+
+No bid values revealed on the UI until settlement
+
+Only final clearing price and total sold are public
+
+Event Subscription
+
+Frontend polls indexer API for updates
+
+Optional WebSockets for live auction updates
+
+Pending Transactions Handling
+
+Show transaction in “pending” state until confirmed
+
+Provide success/error notifications
+
+Network Awareness
+
+Warn if user is not connected to Aleo testnet
+
+Disable transactions on wrong network
+
+4️⃣ Typical UI Flow
+User visits site
+        │
+        ▼
+Connect Wallet
+        │
+        ▼
+Deposit Tokens --> Wallet Balance Updated
+        │
+        ▼
+Browse Auctions --> Auction Details
+        │
+        ▼
+Submit Bid (via ZK) --> Pending / Confirmed
+        │
+        ▼
+Auction Ends (ZK Settlement) --> Winners & Clearing Price
+        │
+        ▼
+Claim Items / Refunds
+        │
+        ▼
+Withdraw Tokens Back to Wallet
