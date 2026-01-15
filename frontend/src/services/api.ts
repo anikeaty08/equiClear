@@ -1,6 +1,6 @@
 // EquiClear API Client - Indexer Communication
 
-const API_BASE = import.meta.env.VITE_INDEXER_URL || 'http://localhost:3001';
+const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || 'http://localhost:3001';
 
 export interface Auction {
     id: string;

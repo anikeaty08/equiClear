@@ -175,7 +175,13 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
                 >
                     {isSubmitting ? (
                         <>
-                            <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+                            <motion.span
+                                animate={{ rotate: 360 }}
+                                transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                                style={{ display: 'inline-block' }}
+                            >
+                                <Loader2 size={20} />
+                            </motion.span>
                             Processing...
                         </>
                     ) : !wallet.connected ? (
@@ -188,13 +194,6 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
                     )}
                 </motion.button>
             </form>
-
-            <style jsx>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
         </motion.div>
     );
 }

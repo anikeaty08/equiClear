@@ -24,16 +24,9 @@ program equiclear_auction.aleo {
     mapping auction_clearing_price: field => u64;
     mapping auction_counter: u8 => u64;
     
-    // Initialize function - called at deployment
-    async transition init() -> Future {
-        let f: Future = finalize_init();
-        return f;
-    }
-    
-    async function finalize_init() {
-        // Initialize auction counter
-        Mapping::set(auction_counter, 0u8, 0u64);
-    }
+    // Constructor - required for deployment (non-upgradable)
+    @noupgrade
+    async constructor() {}
     
     // Create a new Dutch auction
     // auction_owner: explicit address that will own the auction record

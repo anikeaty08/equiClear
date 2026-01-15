@@ -21,7 +21,26 @@ export PATH="$HOME/.cargo/bin:$PATH"
 # Load environment variables from .env if it exists
 if [ -f "$SCRIPT_DIR/.env" ]; then
     echo -e "${BLUE}Loading environment variables from .env...${NC}"
-    export $(grep -v '^#' "$SCRIPT_DIR/.env" | xargs)
+    # Strip Windows carriage returns and export variables
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Remove carriage returns
+        line=$(echo "$line" | tr -d '\r')
+        # Skip comments and empty lines
+        [[ "$line" =~ ^[[:space:]]*# ]] && continue
+        [[ -z "${line// }" ]] && continue
+        # Check if line contains = (is a valid key=value pair)
+        if [[ "$line" == *"="* ]]; then
+            key="${line%%=*}"
+            value="${line#*=}"
+            # Trim whitespace
+            key=$(echo "$key" | xargs)
+            value=$(echo "$value" | xargs)
+            # Skip if key is empty
+            [[ -z "$key" ]] && continue
+            # Export the variable
+            export "$key=$value"
+        fi
+    done < "$SCRIPT_DIR/.env"
 fi
 
 # Network configuration
@@ -104,7 +123,7 @@ deploy_contract() {
     
     cd "$contract_dir"
     
-    if leo deploy --network "$NETWORK" --endpoint "$ENDPOINT" --private-key "$ALEO_PRIVATE_KEY" --broadcast 2>&1; then
+    if leo deploy --network "$NETWORK" --endpoint "$ENDPOINT" --private-key "$ALEO_PRIVATE_KEY" --broadcast --yes 2>&1; then
         print_success "$contract deployed successfully"
         return 0
     else

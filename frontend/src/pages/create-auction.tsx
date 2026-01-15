@@ -80,7 +80,6 @@ export default function CreateAuctionPage() {
 
             const result = await aleoWallet.createAuction(
                 formData.itemName,
-                formData.itemDescription,
                 formData.totalSupply,
                 formData.startPrice,
                 formData.reservePrice,

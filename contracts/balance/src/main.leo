@@ -28,16 +28,9 @@ program equiclear_balance.aleo {
     // Mapping to track total deposited (public aggregate only)
     mapping total_deposits: field => u64;
     
-    // Initialize function - called at deployment
-    async transition init() -> Future {
-        let f: Future = finalize_init();
-        return f;
-    }
-    
-    async function finalize_init() {
-        // Initialize with empty state
-        Mapping::set(total_deposits, 0field, 0u64);
-    }
+    // Constructor - required for deployment (non-upgradable)
+    @noupgrade
+    async constructor() {}
     
     // Deposit tokens into private balance
     // recipient: explicit address that will own the records (avoids self.caller warning)

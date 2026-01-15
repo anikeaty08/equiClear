@@ -33,17 +33,9 @@ program equiclear_bid.aleo {
     mapping bid_counts: field => u64;
     mapping total_bid_volume: field => u64;
     
-    // Initialize - required for deployment
-    async transition init() -> Future {
-        let f: Future = finalize_init();
-        return f;
-    }
-    
-    async function finalize_init() {
-        // Initialize with empty state
-        Mapping::set(bid_counts, 0field, 0u64);
-        Mapping::set(total_bid_volume, 0field, 0u64);
-    }
+    // Constructor - required for deployment (non-upgradable)
+    @noupgrade
+    async constructor() {}
     
     // Place a private bid on an auction
     // bidder: explicit address that will own the bid and balance records

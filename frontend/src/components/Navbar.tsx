@@ -44,20 +44,9 @@ export default function Navbar() {
                     <span className="gradient-text">EquiClear</span>
                 </Link>
 
-                {/* Desktop Navigation */}
-                <ul className="nav-links" style={{ display: 'none' }}>
-                    {navLinks.map((link) => (
-                        <li key={link.href}>
-                            <Link href={link.href} className="nav-link">
-                                {link.label}
-                            </Link>
-                        </li>
-                    ))}
-                </ul>
-
                 <style jsx>{`
           @media (min-width: 768px) {
-            .nav-links {
+            .nav-links-desktop {
               display: flex !important;
             }
             .mobile-menu-btn {
@@ -67,21 +56,13 @@ export default function Navbar() {
         `}</style>
 
                 {/* Desktop Nav Links */}
-                <div className="flex items-center gap-lg" style={{ display: 'none' }}>
+                <div className="nav-links-desktop items-center gap-lg" style={{ display: 'none', gap: 'var(--space-lg)', alignItems: 'center' }}>
                     {navLinks.map((link) => (
                         <Link key={link.href} href={link.href} className="nav-link">
                             {link.label}
                         </Link>
                     ))}
                 </div>
-
-                <style jsx>{`
-          @media (min-width: 768px) {
-            .flex.items-center.gap-lg {
-              display: flex !important;
-            }
-          }
-        `}</style>
 
                 {/* Wallet Button */}
                 <div className="flex items-center gap-md">
