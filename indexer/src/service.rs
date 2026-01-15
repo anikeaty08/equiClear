@@ -3,13 +3,13 @@
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    routing::{get, post},
+    routing::get,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 
 use crate::state::{SupabaseClient, AuctionRecord, BidAggregate, ClaimRecord};
 use crate::events::AuctionStatus;
@@ -47,6 +47,7 @@ impl<T> ApiResponse<T> {
 
 /// Query parameters for auction list
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct AuctionQuery {
     pub status: Option<String>,
     pub limit: Option<i32>,
@@ -226,7 +227,7 @@ async fn get_user_claims(
 
 /// Get platform stats
 async fn get_stats(
-    State(state): State<Arc<AppState>>,
+    State(_state): State<Arc<AppState>>,
 ) -> Result<Json<ApiResponse<AuctionStatsResponse>>, StatusCode> {
     // In production, these would be aggregated from Supabase
     let stats = AuctionStatsResponse {

@@ -109,6 +109,7 @@ pub enum BlockchainEvent {
 }
 
 /// Parse raw blockchain data into events
+#[allow(dead_code)]
 pub fn parse_transaction_events(_tx_data: &str) -> Vec<BlockchainEvent> {
     // In production, this would parse actual Aleo transaction outputs
     // For now, return empty vec - events come from Supabase subscriptions

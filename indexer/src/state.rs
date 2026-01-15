@@ -7,9 +7,10 @@ use crate::events::AuctionStatus;
 /// Supabase client wrapper
 pub struct SupabaseClient {
     client: postgrest::Postgrest,
-    url: String,
+
 }
 
+#[allow(dead_code)]
 impl SupabaseClient {
     pub fn new(url: &str, api_key: &str) -> Self {
         let client = postgrest::Postgrest::new(format!("{}/rest/v1", url))
@@ -18,7 +19,7 @@ impl SupabaseClient {
         
         Self {
             client,
-            url: url.to_string(),
+
         }
     }
     

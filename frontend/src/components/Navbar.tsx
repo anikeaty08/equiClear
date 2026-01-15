@@ -3,30 +3,23 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Wallet, Menu, X } from 'lucide-react';
-import { useStore } from '@/store';
-import { aleoWallet } from '@/services/wallet';
+import { useWallet } from '@/contexts/WalletContext';
 
 export default function Navbar() {
-    const { wallet, setWallet, resetWallet } = useStore();
+    const { connected, address, connect, disconnect, loading } = useWallet();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
-    const [isConnecting, setIsConnecting] = React.useState(false);
 
     const handleConnect = async () => {
-        setIsConnecting(true);
         try {
-            const state = await aleoWallet.connect();
-            setWallet(state);
+            await connect();
         } catch (error: any) {
             console.error('Connection failed:', error);
-            alert(error.message || 'Failed to connect wallet');
-        } finally {
-            setIsConnecting(false);
+            alert(error.message || 'Failed to connect wallet. Make sure Leo Wallet extension is installed and unlocked.');
         }
     };
 
     const handleDisconnect = async () => {
-        await aleoWallet.disconnect();
-        resetWallet();
+        await disconnect();
     };
 
     const navLinks = [
@@ -44,19 +37,8 @@ export default function Navbar() {
                     <span className="gradient-text">EquiClear</span>
                 </Link>
 
-                <style jsx>{`
-          @media (min-width: 768px) {
-            .nav-links-desktop {
-              display: flex !important;
-            }
-            .mobile-menu-btn {
-              display: none !important;
-            }
-          }
-        `}</style>
-
                 {/* Desktop Nav Links */}
-                <div className="nav-links-desktop items-center gap-lg" style={{ display: 'none', gap: 'var(--space-lg)', alignItems: 'center' }}>
+                <div className="hidden-mobile visible-desktop items-center gap-lg">
                     {navLinks.map((link) => (
                         <Link key={link.href} href={link.href} className="nav-link">
                             {link.label}
@@ -66,7 +48,7 @@ export default function Navbar() {
 
                 {/* Wallet Button */}
                 <div className="flex items-center gap-md">
-                    {wallet.connected ? (
+                    {connected ? (
                         <motion.button
                             whileHover={{ scale: 1.02 }}
                             whileTap={{ scale: 0.98 }}
@@ -76,7 +58,7 @@ export default function Navbar() {
                         >
                             <Wallet size={18} />
                             <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {wallet.address?.slice(0, 8)}...{wallet.address?.slice(-4)}
+                                {address?.slice(0, 8)}...{address?.slice(-4)}
                             </span>
                         </motion.button>
                     ) : (
@@ -85,18 +67,18 @@ export default function Navbar() {
                             whileTap={{ scale: 0.95 }}
                             className="btn btn-primary btn-glow"
                             onClick={handleConnect}
-                            disabled={isConnecting}
+                            disabled={loading}
                         >
                             <Wallet size={18} />
-                            {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+                            {loading ? 'Connecting...' : 'Connect Wallet'}
                         </motion.button>
                     )}
 
                     {/* Mobile Menu Button */}
                     <button
-                        className="mobile-menu-btn btn btn-secondary"
+                        className="hidden-desktop btn btn-secondary"
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        style={{ padding: '0.5rem', display: 'block' }}
+                        style={{ padding: '0.5rem' }}
                     >
                         {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
                     </button>
@@ -137,14 +119,6 @@ export default function Navbar() {
                     ))}
                 </motion.div>
             )}
-
-            <style jsx>{`
-        @media (min-width: 768px) {
-          .mobile-menu-btn {
-            display: none !important;
-          }
-        }
-      `}</style>
         </nav>
     );
 }
