@@ -24,15 +24,28 @@ program equiclear_auction.aleo {
     mapping auction_clearing_price: field => u64;
     mapping auction_counter: u8 => u64;
     
+    // Initialize function - called at deployment
+    async transition init() -> Future {
+        let f: Future = finalize_init();
+        return f;
+    }
+    
+    async function finalize_init() {
+        // Initialize auction counter
+        Mapping::set(auction_counter, 0u8, 0u64);
+    }
+    
     // Create a new Dutch auction
-    transition create_auction(
+    // auction_owner: explicit address that will own the auction record
+    async transition create_auction(
+        auction_owner: address,
         item_name: field,
         total_supply: u64,
         start_price: u64,
         reserve_price: u64,
         start_time: u64,
         end_time: u64
-    ) -> Auction {
+    ) -> (Auction, Future) {
         assert(total_supply > 0u64);
         assert(start_price > reserve_price);
         assert(reserve_price > 0u64);
@@ -45,7 +58,7 @@ program equiclear_auction.aleo {
         let auction_id: field = BHP256::hash_to_field(item_name);
         
         let auction: Auction = Auction {
-            owner: self.caller,
+            owner: auction_owner,
             auction_id: auction_id,
             item_name: item_name,
             total_supply: total_supply,
@@ -58,10 +71,11 @@ program equiclear_auction.aleo {
             clearing_price: 0u64,
         };
         
-        return auction then finalize(auction_id, total_supply);
+        let f: Future = finalize_create_auction(auction_id, total_supply);
+        return (auction, f);
     }
     
-    finalize create_auction(auction_id: field, total_supply: u64) {
+    async function finalize_create_auction(auction_id: field, total_supply: u64) {
         Mapping::set(auctions, auction_id, true);
         Mapping::set(auction_status, auction_id, 0u8);
         Mapping::set(auction_supply, auction_id, total_supply);
@@ -71,8 +85,7 @@ program equiclear_auction.aleo {
     }
     
     // Activate auction
-    transition activate_auction(auction: Auction, current_time: u64) -> Auction {
-        assert_eq(auction.owner, self.caller);
+    async transition activate_auction(auction: Auction, current_time: u64) -> (Auction, Future) {
         assert_eq(auction.status, 0u8);
         assert(current_time >= auction.start_time);
         
@@ -90,21 +103,21 @@ program equiclear_auction.aleo {
             clearing_price: 0u64,
         };
         
-        return activated then finalize(auction.auction_id);
+        let f: Future = finalize_activate_auction(auction.auction_id);
+        return (activated, f);
     }
     
-    finalize activate_auction(auction_id: field) {
+    async function finalize_activate_auction(auction_id: field) {
         Mapping::set(auction_status, auction_id, 1u8);
     }
     
     // Settle auction with uniform clearing price
-    transition settle_auction(
+    async transition settle_auction(
         auction: Auction,
         clearing_price: u64,
         total_sold: u64,
         current_time: u64
-    ) -> Auction {
-        assert_eq(auction.owner, self.caller);
+    ) -> (Auction, Future) {
         assert_eq(auction.status, 1u8);
         assert(current_time >= auction.end_time);
         assert(clearing_price >= auction.reserve_price);
@@ -125,18 +138,18 @@ program equiclear_auction.aleo {
             clearing_price: clearing_price,
         };
         
-        return settled then finalize(auction.auction_id, clearing_price, auction.total_supply - total_sold);
+        let f: Future = finalize_settle_auction(auction.auction_id, clearing_price, auction.total_supply - total_sold);
+        return (settled, f);
     }
     
-    finalize settle_auction(auction_id: field, clearing_price: u64, remaining: u64) {
+    async function finalize_settle_auction(auction_id: field, clearing_price: u64, remaining: u64) {
         Mapping::set(auction_status, auction_id, 2u8);
         Mapping::set(auction_clearing_price, auction_id, clearing_price);
         Mapping::set(auction_supply, auction_id, remaining);
     }
     
     // Cancel auction
-    transition cancel_auction(auction: Auction) -> Auction {
-        assert_eq(auction.owner, self.caller);
+    async transition cancel_auction(auction: Auction) -> (Auction, Future) {
         assert(auction.status < 2u8);
         
         let cancelled: Auction = Auction {
@@ -153,10 +166,11 @@ program equiclear_auction.aleo {
             clearing_price: 0u64,
         };
         
-        return cancelled then finalize(auction.auction_id);
+        let f: Future = finalize_cancel_auction(auction.auction_id);
+        return (cancelled, f);
     }
     
-    finalize cancel_auction(auction_id: field) {
+    async function finalize_cancel_auction(auction_id: field) {
         Mapping::set(auction_status, auction_id, 3u8);
     }
 }
