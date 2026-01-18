@@ -1,6 +1,16 @@
 {
-    "program": "equiclear_balance.aleo",
+  "program": "equiclear_balance_v2.aleo",
     "version": "0.1.0",
     "description": "EquiClear Balance Module - Token deposits and withdrawals with ZK proofs",
-    "license": "MIT"
+  "license": "MIT",
+  "leo": "3.4.0",
+  "dependencies": [
+    {
+      "name": "credits.aleo",
+      "location": "network",
+      "path": null,
+      "edition": null
+    }
+  ],
+  "dev_dependencies": null
 }

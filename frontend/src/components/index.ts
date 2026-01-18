@@ -8,3 +8,4 @@ export { default as DepositForm } from './DepositForm';
 export { default as WithdrawForm } from './WithdrawForm';
 export { default as ClaimList } from './ClaimList';
 export { default as Notifications } from './Notifications';
+export { default as DisconnectedState } from './DisconnectedState';

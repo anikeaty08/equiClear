@@ -4,15 +4,63 @@ import { motion } from 'framer-motion';
 import { ArrowUpFromLine, Loader2, AlertTriangle } from 'lucide-react';
 import { useStore } from '@/store';
 import { aleoWallet } from '@/services/wallet';
+import { useRecords, Network } from '@puzzlehq/sdk';
+import { parseBalanceRecord } from '@/services/balance';
+import { CONTRACTS } from '@/services/aleo';
 
 interface WithdrawFormProps {
     onSuccess?: () => void;
 }
 
 export default function WithdrawForm({ onSuccess }: WithdrawFormProps) {
-    const { wallet, addNotification, setUserBalance, userBalance } = useStore();
+    const { wallet, addNotification, setUserBalance, userBalance, addTransaction } = useStore();
     const [amount, setAmount] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+    // Fetch balance records from Puzzle wallet when connected
+    // @ts-ignore - useRecords hook from Puzzle SDK
+    const balanceRecordsResult = useRecords(
+        wallet.connected ? {
+            filter: {
+                programIds: [CONTRACTS.BALANCE],
+                names: ['Balance'],
+                status: 'Unspent'
+            },
+            network: Network.AleoTestnet
+        } : {
+            filter: {
+                programIds: [],
+                names: [],
+                status: 'Unspent'
+            },
+            network: Network.AleoTestnet
+        }
+    );
+
+    const balanceRecords = balanceRecordsResult?.records || [];
+
+    const getRecordText = (record: any): string => {
+        if (typeof record === 'string') return record;
+        if (record?.record && typeof record.record === 'string') return record.record;
+        if (record?.plaintext && typeof record.plaintext === 'string') return record.plaintext;
+        return JSON.stringify(record);
+    };
+
+    const selectBalanceRecord = (neededAmount: number): string | null => {
+        for (const record of balanceRecords) {
+            const recordStr = getRecordText(record);
+            const parsed = parseBalanceRecord(recordStr);
+            if (!parsed) continue;
+            const recordTokenId = parsed.token_id?.toString() || '';
+            const tokenMatches = recordTokenId.includes('1field') || recordTokenId === '1';
+            const amountStr = parsed.amount.toString().replace('u64', '');
+            const amountValue = parseInt(amountStr, 10) || 0;
+            if (tokenMatches && amountValue >= neededAmount) {
+                return recordStr;
+            }
+        }
+        return null;
+    };
 
     const handleMaxClick = () => {
         setAmount(userBalance.toString());
@@ -49,16 +97,37 @@ export default function WithdrawForm({ onSuccess }: WithdrawFormProps) {
             return;
         }
 
+        if (balanceRecords.length === 0) {
+            addNotification({
+                type: 'warning',
+                title: 'No Balance Records',
+                message: 'No balance records found. Deposit credits first, then try again.',
+            });
+            return;
+        }
+
         setIsSubmitting(true);
         try {
-            const result = await aleoWallet.withdraw('1field', withdrawAmount);
+            const selectedRecord = selectBalanceRecord(withdrawAmount);
+            if (!selectedRecord) {
+                throw new Error('No balance record found with sufficient amount. Deposit more credits or consolidate balances.');
+            }
+
+            const result = await aleoWallet.withdraw('1field', withdrawAmount, selectedRecord);
 
             if (result.success) {
                 setUserBalance(userBalance - withdrawAmount);
                 addNotification({
                     type: 'success',
                     title: 'Withdrawal Successful!',
-                    message: `${withdrawAmount.toLocaleString()} credits have been sent to your wallet.`,
+                    message: `${withdrawAmount.toLocaleString()} Aleo testnet credits have been sent to your wallet.`,
+                });
+                addTransaction({
+                    type: 'withdraw',
+                    amount: withdrawAmount,
+                    timestamp: new Date().toISOString(),
+                    status: 'completed',
+                    txHash: result.txId || '',
                 });
                 setAmount('');
                 onSuccess?.();
@@ -100,7 +169,7 @@ export default function WithdrawForm({ onSuccess }: WithdrawFormProps) {
                 <div>
                     <h3 style={{ margin: 0 }}>Withdraw Tokens</h3>
                     <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-                        Return tokens to your wallet
+                        Withdraw Aleo testnet credits back to your wallet
                     </span>
                 </div>
             </div>

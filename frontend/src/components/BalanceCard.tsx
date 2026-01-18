@@ -16,8 +16,9 @@ export default function BalanceCard({ tokenId = '1', tokenName = 'ALEO' }: Balan
 
     const handleRefresh = async () => {
         setIsRefreshing(true);
-        // Simulate balance refresh - in production, this would query the blockchain
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        // Trigger a re-fetch by reloading the page or refreshing wallet connection
+        // The WalletContext will automatically fetch latest records
+        window.location.reload();
         setIsRefreshing(false);
     };
 

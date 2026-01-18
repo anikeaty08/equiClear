@@ -3,22 +3,29 @@ import React from 'react';
 import Head from 'next/head';
 import { motion } from 'framer-motion';
 import { Wallet, ArrowDownToLine, ArrowUpFromLine, History, ExternalLink } from 'lucide-react';
-import { BalanceCard, DepositForm, WithdrawForm } from '@/components';
+import { BalanceCard, DepositForm, WithdrawForm, DisconnectedState } from '@/components';
 import { useStore } from '@/store';
 
 export default function WalletPage() {
-    const { wallet } = useStore();
+    const { wallet, transactions } = useStore();
     const [activeTab, setActiveTab] = React.useState<'deposit' | 'withdraw'>('deposit');
-    const [transactions, setTransactions] = React.useState<Transaction[]>([]);
 
-    // Demo transactions
-    React.useEffect(() => {
-        setTransactions([
-            { id: '1', type: 'deposit', amount: 5000, timestamp: new Date(Date.now() - 3600000), status: 'completed', txHash: 'at1demo...abc' },
-            { id: '2', type: 'bid', amount: -2000, timestamp: new Date(Date.now() - 7200000), status: 'completed', txHash: 'at1demo...def' },
-            { id: '3', type: 'refund', amount: 500, timestamp: new Date(Date.now() - 10800000), status: 'completed', txHash: 'at1demo...ghi' },
-        ]);
-    }, []);
+    if (!wallet.connected) {
+        return (
+            <>
+                <Head>
+                    <title>Wallet - EquiClear</title>
+                </Head>
+                <div className="container" style={{ paddingTop: 'var(--space-2xl)', paddingBottom: 'var(--space-3xl)' }}>
+                    <DisconnectedState
+                        title="Connect Wallet to Manage Balance"
+                        message="Connect your Puzzle or Leo wallet to deposit Aleo testnet tokens and start bidding in auctions"
+                        showFeatures={true}
+                    />
+                </div>
+            </>
+        );
+    }
 
     return (
         <>
@@ -168,16 +175,7 @@ export default function WalletPage() {
     );
 }
 
-interface Transaction {
-    id: string;
-    type: 'deposit' | 'withdraw' | 'bid' | 'refund' | 'claim';
-    amount: number;
-    timestamp: Date;
-    status: 'pending' | 'completed' | 'failed';
-    txHash: string;
-}
-
-function TransactionItem({ transaction, index }: { transaction: Transaction; index: number }) {
+function TransactionItem({ transaction, index }: { transaction: any; index: number }) {
     const getTypeStyles = () => {
         switch (transaction.type) {
             case 'deposit':
@@ -217,7 +215,7 @@ function TransactionItem({ transaction, index }: { transaction: Transaction; ind
                         {transaction.type}
                     </span>
                     <div className="text-muted" style={{ fontSize: '0.75rem' }}>
-                        {transaction.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(transaction.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
@@ -232,3 +230,4 @@ function TransactionItem({ transaction, index }: { transaction: Transaction; ind
         </motion.div>
     );
 }
+

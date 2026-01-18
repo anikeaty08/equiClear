@@ -2,12 +2,13 @@
 import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Wallet, Menu, X } from 'lucide-react';
+import { Wallet, Menu, X, ChevronDown, LogOut } from 'lucide-react';
 import { useWallet } from '@/contexts/WalletContext';
 
 export default function Navbar() {
     const { connected, address, connect, disconnect, loading } = useWallet();
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+    const [isWalletMenuOpen, setIsWalletMenuOpen] = React.useState(false);
 
     const handleConnect = async () => {
         try {
@@ -20,6 +21,7 @@ export default function Navbar() {
 
     const handleDisconnect = async () => {
         await disconnect();
+        setIsWalletMenuOpen(false);
     };
 
     const navLinks = [
@@ -49,18 +51,51 @@ export default function Navbar() {
                 {/* Wallet Button */}
                 <div className="flex items-center gap-md">
                     {connected ? (
-                        <motion.button
-                            whileHover={{ scale: 1.02 }}
-                            whileTap={{ scale: 0.98 }}
-                            className="btn btn-secondary"
-                            onClick={handleDisconnect}
-                            style={{ padding: '0.5rem 1rem' }}
-                        >
-                            <Wallet size={18} />
-                            <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                {address?.slice(0, 8)}...{address?.slice(-4)}
-                            </span>
-                        </motion.button>
+                        <div style={{ position: 'relative' }}>
+                            <motion.button
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                className="btn btn-secondary"
+                                onClick={() => setIsWalletMenuOpen(!isWalletMenuOpen)}
+                                style={{ padding: '0.5rem 0.75rem' }}
+                            >
+                                <Wallet size={18} />
+                                <span style={{ maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {address?.slice(0, 8)}...{address?.slice(-4)}
+                                </span>
+                                <ChevronDown size={16} />
+                            </motion.button>
+                            {isWalletMenuOpen && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: -6 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    className="glass-card"
+                                    style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 'calc(100% + 8px)',
+                                        minWidth: '200px',
+                                        padding: 'var(--space-sm)',
+                                        borderRadius: 'var(--radius-md)',
+                                        border: '1px solid var(--glass-border)',
+                                        zIndex: 20
+                                    }}
+                                >
+                                    <button
+                                        className="btn btn-secondary"
+                                        onClick={handleDisconnect}
+                                        style={{
+                                            width: '100%',
+                                            justifyContent: 'space-between',
+                                            padding: '0.5rem 0.75rem'
+                                        }}
+                                    >
+                                        Disconnect
+                                        <LogOut size={16} />
+                                    </button>
+                                </motion.div>
+                            )}
+                        </div>
                     ) : (
                         <motion.button
                             whileHover={{ scale: 1.05 }}

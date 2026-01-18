@@ -1,343 +1,540 @@
 'use client';
+
 import React from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import {
-    Sparkles,
-    Shield,
-    Zap,
-    Globe,
-    ArrowRight,
-    TrendingDown,
-    Users,
-    Lock
+import { AuctionGrid, DisconnectedState } from '@/components';
+import { useStore } from '@/store';
+import { useWallet } from '@/contexts/WalletContext';
+import api from '@/services/api';
+import { 
+    TrendingDown, Shield, Coins, Zap, ArrowRight, 
+    Clock, Users, Sparkles, Lock, Globe, Eye, CheckCircle
 } from 'lucide-react';
-import { AuctionGrid } from '@/components';
-import { api, Auction, Stats } from '@/services/api';
 
-export default function Home() {
-    const [auctions, setAuctions] = React.useState<Auction[]>([]);
-    const [stats, setStats] = React.useState<Stats | null>(null);
-    const [loading, setLoading] = React.useState(true);
-    const [filter, setFilter] = React.useState<'all' | 'active' | 'upcoming' | 'settled'>('all');
+export default function HomePage() {
+    const { auctions, setAuctions, isLoading, setLoading } = useStore();
+    const { connected } = useWallet();
+    const [initialLoaded, setInitialLoaded] = React.useState(false);
 
     React.useEffect(() => {
-        loadData();
-    }, []);
+        let cancelled = false;
 
-    const loadData = async () => {
-        setLoading(true);
-        try {
-            const [auctionsData, statsData] = await Promise.all([
-                api.getAuctions(),
-                api.getStats(),
-            ]);
-            setAuctions(auctionsData);
-            setStats(statsData);
-        } catch (error) {
-            console.error('Failed to load data:', error);
-            // Use demo data if API fails
-            setAuctions(getDemoAuctions());
-            setStats({ total_auctions: 12, active_auctions: 4, total_volume: 125000, total_bids: 89 });
-        } finally {
-            setLoading(false);
-        }
-    };
+        const loadAuctions = async () => {
+            setLoading(true);
+            try {
+                const data = await api.getAuctions(connected ? '1' : undefined);
+                if (!cancelled) {
+                    const now = new Date();
+                    const filtered = connected
+                        ? data.filter((auction) => {
+                            const start = new Date(auction.start_time);
+                            const end = new Date(auction.end_time);
+                            return auction.status === 1 && start <= now && end > now;
+                        })
+                        : data;
 
-    const filteredAuctions = auctions.filter(a => {
-        if (filter === 'all') return true;
-        if (filter === 'active') return a.status === 1;
-        if (filter === 'upcoming') return a.status === 0;
-        if (filter === 'settled') return a.status === 2;
-        return true;
-    });
+                    setAuctions(filtered);
+                    setInitialLoaded(true);
+                }
+            } catch (error) {
+                console.error('Failed to load auctions', error);
+            } finally {
+                if (!cancelled) {
+                    setLoading(false);
+                }
+            }
+        };
 
-    const features = [
-        {
-            icon: TrendingDown,
-            title: 'Dutch Auction',
-            description: 'Prices start high and decrease over time until items sell out.',
-        },
-        {
-            icon: Users,
-            title: 'Uniform Clearing',
-            description: 'All winners pay the same final price, ensuring complete fairness.',
-        },
-        {
-            icon: Lock,
-            title: 'Private Bids',
-            description: 'Zero-knowledge proofs keep your bid amounts completely private.',
-        },
-        {
-            icon: Globe,
-            title: 'Cross-Chain Ready',
-            description: 'Architecture designed for future cross-chain bidding support.',
-        },
-    ];
+        loadAuctions();
 
-    return (
-        <>
-            <Head>
-                <title>EquiClear - Decentralized Dutch Auctions on Aleo</title>
-            </Head>
+        return () => {
+            cancelled = true;
+        };
+    }, [setAuctions, setLoading, connected]);
 
-            {/* Hero Section */}
-            <section className="hero">
-                <div className="hero-content">
+    // Show feature showcase when not connected
+    if (!connected) {
+        const features = [
+            {
+                icon: <Shield size={36} />,
+                title: 'Private Bidding',
+                desc: 'Zero-knowledge proofs ensure your bids remain completely private until auction settlement',
+                color: 'rgba(99, 102, 241, 0.2)',
+                iconColor: '#6366f1',
+                gradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(99, 102, 241, 0.05))'
+            },
+            {
+                icon: <TrendingDown size={36} />,
+                title: 'Dutch Auctions',
+                desc: 'Prices start high and decrease over time. Buyers accept when price reaches their valuation',
+                color: 'rgba(34, 211, 238, 0.2)',
+                iconColor: '#22d3ee',
+                gradient: 'linear-gradient(135deg, rgba(34, 211, 238, 0.1), rgba(34, 211, 238, 0.05))'
+            },
+            {
+                icon: <Zap size={36} />,
+                title: 'Uniform Clearing',
+                desc: 'All winners pay the same final clearing price - fair and transparent for everyone',
+                color: 'rgba(245, 158, 11, 0.2)',
+                iconColor: '#f59e0b',
+                gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))'
+            },
+            {
+                icon: <Coins size={36} />,
+                title: 'Real Aleo Credits',
+                desc: 'Deposit and bid with real Aleo testnet credits. Fully on-chain and verifiable',
+                color: 'rgba(16, 185, 129, 0.2)',
+                iconColor: '#10b981',
+                gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))'
+            },
+            {
+                icon: <Eye size={36} />,
+                title: 'Transparent & Private',
+                desc: 'Public auction data with private bid details - best of both worlds',
+                color: 'rgba(139, 92, 246, 0.2)',
+                iconColor: '#8b5cf6',
+                gradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.1), rgba(139, 92, 246, 0.05))'
+            },
+            {
+                icon: <Globe size={36} />,
+                title: 'Fully Decentralized',
+                desc: 'Built on Aleo blockchain - no central authority, fully trustless and secure',
+                color: 'rgba(236, 72, 153, 0.2)',
+                iconColor: '#ec4899',
+                gradient: 'linear-gradient(135deg, rgba(236, 72, 153, 0.1), rgba(236, 72, 153, 0.05))'
+            }
+        ];
+
+        const benefits = [
+            'No front-running attacks',
+            'Fair price discovery',
+            'Privacy-preserving',
+            'Instant settlement',
+            'On-chain verification',
+            'Dutch auction mechanics'
+        ];
+
+        const phases = [
+            {
+                title: 'Phase 1: Core Auctions',
+                status: 'Live',
+                desc: 'Private bidding, deposits, and settlement on Aleo testnet.',
+                highlight: true
+            },
+            {
+                title: 'Phase 2: Advanced Settlement',
+                status: 'Next',
+                desc: 'Batch claims, better refunds, and deeper auction analytics.',
+                highlight: false
+            },
+            {
+                title: 'Phase 3: Bonus Features',
+                status: 'Planned',
+                desc: 'Cross-auction strategy tools and richer portfolio insights.',
+                highlight: false
+            }
+        ];
+
+        return (
+            <>
+                <Head>
+                    <title>EquiClear - Decentralized Dutch Auctions</title>
+                </Head>
+
+                <div className="container" style={{ paddingTop: 'var(--space-2xl)', paddingBottom: 'var(--space-3xl)' }}>
+                    {/* Hero Section */}
                     <motion.div
                         initial={{ opacity: 0, y: 30 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6 }}
+                        transition={{ duration: 0.8 }}
+                        style={{ 
+                            textAlign: 'center', 
+                            marginBottom: 'var(--space-3xl)',
+                            maxWidth: '1000px',
+                            margin: '0 auto var(--space-3xl)'
+                        }}
                     >
-                        <span
-                            className="badge badge-live"
+                        <motion.div
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
                             style={{
-                                marginBottom: 'var(--space-lg)',
-                                fontSize: '0.8rem',
-                                padding: 'var(--space-sm) var(--space-lg)',
+                                display: 'inline-flex',
+                                padding: 'var(--space-xl)',
+                                borderRadius: 'var(--radius-xl)',
+                                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(34, 211, 238, 0.2))',
+                                marginBottom: 'var(--space-xl)',
+                                border: '1px solid var(--glass-border)',
+                                boxShadow: '0 20px 40px rgba(99, 102, 241, 0.2)'
                             }}
                         >
-                            <Sparkles size={14} style={{ marginRight: '6px' }} />
-                            Now Live on Aleo Testnet
-                        </span>
-                    </motion.div>
-
-                    <motion.h1
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.1 }}
-                    >
-                        Fair Auctions.{' '}
-                        <span className="gradient-text">Private Bids.</span>
-                        <br />
-                        Equal Pricing.
-                    </motion.h1>
-
-                    <motion.p
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.2 }}
-                    >
-                        EquiClear brings privacy-preserving Dutch auctions to Aleo.
-                        Bid privately with zero-knowledge proofs and pay a uniform clearing price.
-                    </motion.p>
-
-                    <motion.div
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.6, delay: 0.3 }}
-                        className="hero-buttons"
-                    >
-                        <Link href="#auctions">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="btn btn-primary btn-glow"
-                                style={{ padding: 'var(--space-lg) var(--space-2xl)' }}
-                            >
-                                Explore Auctions
-                                <ArrowRight size={20} />
-                            </motion.button>
-                        </Link>
-                        <Link href="/create-auction">
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className="btn btn-secondary"
-                                style={{ padding: 'var(--space-lg) var(--space-2xl)' }}
-                            >
-                                Create Auction
-                            </motion.button>
-                        </Link>
-                    </motion.div>
-                </div>
-
-                {/* Floating Elements */}
-                <motion.div
-                    className="floating"
-                    style={{
-                        position: 'absolute',
-                        top: '20%',
-                        left: '10%',
-                        width: '100px',
-                        height: '100px',
-                        borderRadius: '50%',
-                        background: 'rgba(99, 102, 241, 0.1)',
-                        filter: 'blur(40px)',
-                    }}
-                />
-                <motion.div
-                    className="floating"
-                    style={{
-                        position: 'absolute',
-                        bottom: '30%',
-                        right: '15%',
-                        width: '150px',
-                        height: '150px',
-                        borderRadius: '50%',
-                        background: 'rgba(34, 211, 238, 0.1)',
-                        filter: 'blur(50px)',
-                        animationDelay: '-3s',
-                    }}
-                />
-            </section>
-
-            {/* Stats Section */}
-            <section className="container" style={{ marginBottom: 'var(--space-3xl)' }}>
-                <div className="stats-grid">
-                    {[
-                        { label: 'Total Auctions', value: stats?.total_auctions || 0 },
-                        { label: 'Active Now', value: stats?.active_auctions || 0 },
-                        { label: 'Total Volume', value: `${((stats?.total_volume || 0) / 1000).toFixed(0)}K` },
-                        { label: 'Total Bids', value: stats?.total_bids || 0 },
-                    ].map((stat, i) => (
-                        <motion.div
-                            key={stat.label}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.1 * i }}
-                            className="glass-card stat-card"
-                        >
-                            <div className="stat-value">{stat.value}</div>
-                            <div className="stat-label">{stat.label}</div>
+                            <Sparkles size={56} style={{ color: 'var(--color-primary)' }} />
                         </motion.div>
-                    ))}
-                </div>
-            </section>
 
-            {/* Features Section */}
-            <section className="container" style={{ marginBottom: 'var(--space-3xl)' }}>
-                <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    className="text-center"
-                    style={{ marginBottom: 'var(--space-2xl)' }}
-                >
-                    <h2>Why EquiClear?</h2>
-                    <p className="text-secondary" style={{ maxWidth: '600px', margin: '0 auto' }}>
-                        A new paradigm for fair, private, and efficient digital asset auctions
-                    </p>
-                </motion.div>
+                        <h1 style={{
+                            fontSize: 'clamp(2.5rem, 5vw, 4.5rem)',
+                            fontWeight: 800,
+                            marginBottom: 'var(--space-lg)',
+                            background: 'linear-gradient(135deg, #6366f1, #22d3ee, #f59e0b)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            lineHeight: 1.2
+                        }}>
+                            EquiClear
+                        </h1>
+                        <p style={{
+                            fontSize: 'clamp(1.1rem, 2vw, 1.5rem)',
+                            color: 'var(--text-secondary)',
+                            marginBottom: 'var(--space-xl)',
+                            lineHeight: 1.6,
+                            maxWidth: '800px',
+                            margin: '0 auto var(--space-xl)'
+                        }}>
+                            Privacy-preserving Dutch auctions on Aleo. Bid privately, settle fairly, trade securely with real Aleo testnet credits.
+                        </p>
 
-                <div className="grid grid-cols-4">
-                    {features.map((feature, i) => (
-                        <motion.div
-                            key={feature.title}
-                            initial={{ opacity: 0, y: 20 }}
-                            whileInView={{ opacity: 1, y: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.1 * i }}
-                            className="glass-card card-3d"
-                            style={{ padding: 'var(--space-xl)', textAlign: 'center' }}
-                        >
-                            <div
+                        {/* Benefits Pills */}
+                        <div style={{
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: 'var(--space-md)',
+                            justifyContent: 'center',
+                            marginBottom: 'var(--space-2xl)'
+                        }}>
+                            {benefits.map((benefit, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: 0.3 + i * 0.05 }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 'var(--space-xs)',
+                                        padding: 'var(--space-sm) var(--space-md)',
+                                        background: 'rgba(255, 255, 255, 0.05)',
+                                        borderRadius: 'var(--radius-full)',
+                                        border: '1px solid var(--glass-border)',
+                                        fontSize: '0.9rem',
+                                        color: 'var(--text-secondary)'
+                                    }}
+                                >
+                                    <CheckCircle size={16} style={{ color: 'var(--color-success)' }} />
+                                    {benefit}
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* Feature Cards Grid */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 40 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.4, duration: 0.8 }}
+                        className="grid grid-cols-3"
+                        style={{ gap: 'var(--space-xl)', marginBottom: 'var(--space-3xl)' }}
+                    >
+                        {features.map((feature, index) => (
+                            <motion.div
+                                key={index}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.5 + index * 0.1 }}
+                                whileHover={{ y: -8, scale: 1.02 }}
+                                className="glass-card"
                                 style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: 'var(--radius-md)',
-                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(34, 211, 238, 0.1))',
+                                    padding: 'var(--space-xl)',
+                                    borderRadius: 'var(--radius-lg)',
+                                    border: '1px solid var(--glass-border)',
+                                    background: feature.gradient,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    position: 'relative',
+                                    overflow: 'hidden'
+                                }}
+                            >
+                                {/* Hover effect overlay */}
+                                <div style={{
+                                    position: 'absolute',
+                                    top: 0,
+                                    left: 0,
+                                    right: 0,
+                                    bottom: 0,
+                                    background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(34, 211, 238, 0.05))',
+                                    opacity: 0,
+                                    transition: 'opacity 0.3s ease',
+                                    pointerEvents: 'none'
+                                }} className="hover-overlay" />
+                                
+                                <div style={{
+                                    width: '72px',
+                                    height: '72px',
+                                    borderRadius: 'var(--radius-lg)',
+                                    background: feature.color,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
-                                    margin: '0 auto var(--space-lg)',
-                                }}
-                            >
-                                <feature.icon size={28} className="text-secondary" />
-                            </div>
-                            <h4 style={{ marginBottom: 'var(--space-sm)' }}>{feature.title}</h4>
-                            <p className="text-muted" style={{ fontSize: '0.9rem', margin: 0 }}>
-                                {feature.description}
-                            </p>
-                        </motion.div>
-                    ))}
-                </div>
-            </section>
-
-            {/* Auctions Section */}
-            <section id="auctions" className="container" style={{ paddingBottom: 'var(--space-3xl)' }}>
-                <div className="flex justify-between items-center" style={{ marginBottom: 'var(--space-xl)', flexWrap: 'wrap', gap: 'var(--space-lg)' }}>
-                    <div>
-                        <h2 style={{ margin: 0 }}>Live Auctions</h2>
-                        <p className="text-secondary" style={{ margin: 0 }}>Discover and bid on active Dutch auctions</p>
-                    </div>
-
-                    {/* Filter Tabs */}
-                    <div className="flex gap-sm">
-                        {(['all', 'active', 'upcoming', 'settled'] as const).map((f) => (
-                            <motion.button
-                                key={f}
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                className={`btn ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setFilter(f)}
-                                style={{
-                                    padding: 'var(--space-sm) var(--space-lg)',
-                                    fontSize: '0.875rem',
-                                    textTransform: 'capitalize',
-                                }}
-                            >
-                                {f}
-                            </motion.button>
+                                    marginBottom: 'var(--space-lg)',
+                                    color: feature.iconColor,
+                                    border: '1px solid var(--glass-border)',
+                                    boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)'
+                                }}>
+                                    {feature.icon}
+                                </div>
+                                <h3 style={{
+                                    fontSize: '1.3rem',
+                                    fontWeight: 700,
+                                    marginBottom: 'var(--space-sm)',
+                                    color: 'var(--text-primary)'
+                                }}>
+                                    {feature.title}
+                                </h3>
+                                <p style={{
+                                    fontSize: '1rem',
+                                    color: 'var(--text-secondary)',
+                                    lineHeight: 1.6
+                                }}>
+                                    {feature.desc}
+                                </p>
+                            </motion.div>
                         ))}
-                    </div>
+                    </motion.div>
+
+                    {/* How It Works Section */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.1 }}
+                        style={{
+                            padding: 'var(--space-2xl)',
+                            background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(34, 211, 238, 0.05))',
+                            borderRadius: 'var(--radius-xl)',
+                            border: '1px solid var(--glass-border)',
+                            marginBottom: 'var(--space-3xl)'
+                        }}
+                    >
+                        <h2 style={{
+                            fontSize: '2.5rem',
+                            fontWeight: 700,
+                            textAlign: 'center',
+                            marginBottom: 'var(--space-xl)',
+                            background: 'linear-gradient(135deg, #6366f1, #22d3ee)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent'
+                        }}>
+                            How It Works
+                        </h2>
+                        <div className="grid grid-cols-4" style={{ gap: 'var(--space-lg)' }}>
+                            {[
+                                { step: '1', title: 'Connect Wallet', desc: 'Link your Puzzle or Leo wallet to get started', icon: <Lock size={24} /> },
+                                { step: '2', title: 'Deposit Credits', desc: 'Add real Aleo testnet credits to your internal balance', icon: <Coins size={24} /> },
+                                { step: '3', title: 'Place Bids', desc: 'Submit private bids on active Dutch auctions', icon: <TrendingDown size={24} /> },
+                                { step: '4', title: 'Settle & Claim', desc: 'Winners pay clearing price, losers get full refunds', icon: <Zap size={24} /> }
+                            ].map((item, i) => (
+                                <motion.div
+                                    key={i}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 1.2 + i * 0.1 }}
+                                    style={{ textAlign: 'center' }}
+                                >
+                                    <div style={{
+                                        width: '64px',
+                                        height: '64px',
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #6366f1, #22d3ee)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        margin: '0 auto var(--space-md)',
+                                        fontWeight: 700,
+                                        fontSize: '1.5rem',
+                                        boxShadow: '0 8px 16px rgba(99, 102, 241, 0.3)',
+                                        position: 'relative'
+                                    }}>
+                                        <span style={{ position: 'absolute', color: 'white' }}>{item.step}</span>
+                                        <div style={{ position: 'absolute', opacity: 0.3, color: 'white' }}>
+                                            {item.icon}
+                                        </div>
+                                    </div>
+                                    <h4 style={{ marginBottom: 'var(--space-xs)', fontSize: '1.1rem', fontWeight: 600 }}>
+                                        {item.title}
+                                    </h4>
+                                    <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                                        {item.desc}
+                                    </p>
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
+
+                    {/* Phases Timeline */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.35 }}
+                        style={{
+                            marginBottom: 'var(--space-3xl)',
+                            padding: 'var(--space-2xl)',
+                            borderRadius: 'var(--radius-xl)',
+                            border: '1px solid var(--glass-border)',
+                            background: 'rgba(255, 255, 255, 0.03)'
+                        }}
+                    >
+                        <div style={{ textAlign: 'center', marginBottom: 'var(--space-xl)' }}>
+                            <h2 style={{ marginBottom: 'var(--space-sm)' }}>Product Phases</h2>
+                            <p className="text-secondary">
+                                Each phase ships for a reason, building trust step-by-step.
+                            </p>
+                        </div>
+
+                        <div style={{ position: 'relative', padding: 'var(--space-lg) 0' }}>
+                            <div style={{
+                                position: 'absolute',
+                                left: '50%',
+                                top: 0,
+                                bottom: 0,
+                                width: '2px',
+                                background: 'linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(255,255,255,0.08))',
+                                transform: 'translateX(-1px)'
+                            }} />
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-xl)' }}>
+                                {phases.map((phase, i) => (
+                                    <div
+                                        key={i}
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateColumns: '1fr 40px 1fr',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <div style={{ textAlign: i % 2 === 0 ? 'right' : 'left' }}>
+                                            {i % 2 === 0 && (
+                                                <PhaseCard phase={phase} />
+                                            )}
+                                        </div>
+                                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                                            <div style={{
+                                                width: '14px',
+                                                height: '14px',
+                                                borderRadius: '50%',
+                                                background: phase.highlight ? '#6366f1' : 'rgba(255,255,255,0.3)',
+                                                boxShadow: phase.highlight ? '0 0 12px rgba(99, 102, 241, 0.6)' : 'none'
+                                            }} />
+                                        </div>
+                                        <div style={{ textAlign: i % 2 === 0 ? 'left' : 'right' }}>
+                                            {i % 2 !== 0 && (
+                                                <PhaseCard phase={phase} />
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </motion.div>
+
+                    {/* Connect Wallet CTA */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 1.6 }}
+                    >
+                        <DisconnectedState
+                            title="Ready to Start?"
+                            message="Connect your Puzzle or Leo wallet to see live auctions and start bidding with real Aleo testnet credits"
+                            showFeatures={false}
+                        />
+                    </motion.div>
                 </div>
 
-                <AuctionGrid auctions={filteredAuctions} loading={loading} />
-            </section>
+                <style jsx>{`
+                    .hover-overlay:hover {
+                        opacity: 1 !important;
+                    }
+                `}</style>
+            </>
+        );
+    }
+
+    // Connected state - show auctions
+    return (
+        <>
+            <Head>
+                <title>EquiClear - Dutch Auctions</title>
+            </Head>
+
+            <div className="container" style={{ paddingTop: 'var(--space-2xl)', paddingBottom: 'var(--space-3xl)' }}>
+                <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    style={{ marginBottom: 'var(--space-2xl)' }}
+                >
+                    <div className="flex items-center justify-between" style={{ marginBottom: 'var(--space-md)' }}>
+                        <div>
+                            <h1 style={{ marginBottom: 'var(--space-sm)' }}>Live Auctions</h1>
+                    <p className="text-secondary">
+                        Deposit into your internal wallet, place private bids, and withdraw after settlement.
+                    </p>
+                        </div>
+                        <motion.div
+                            whileHover={{ scale: 1.05 }}
+                            className="glass-card"
+                            style={{
+                                padding: 'var(--space-md) var(--space-lg)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 'var(--space-sm)',
+                                border: '1px solid var(--glass-border)'
+                            }}
+                        >
+                            <Clock size={20} style={{ color: 'var(--color-secondary)' }} />
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                {auctions.filter(a => a.status === 1).length} Active
+                            </span>
+                        </motion.div>
+                    </div>
+                </motion.div>
+
+                <AuctionGrid
+                    auctions={auctions}
+                    loading={!initialLoaded && isLoading}
+                />
+            </div>
         </>
     );
 }
 
-// Demo auctions for when API is not available
-function getDemoAuctions(): Auction[] {
-    const now = new Date();
-    const hour = 60 * 60 * 1000;
-
-    return [
-        {
-            id: '1',
-            auction_id: 'demo001abc',
-            creator: 'aleo1demo...',
-            item_name: '[Demo] Rare NFT Collection',
-            item_description: 'A collection of 100 unique digital art pieces',
-            total_supply: 100,
-            remaining_supply: 45,
-            start_price: 10000,
-            reserve_price: 2000,
-            start_time: new Date(now.getTime() - 2 * hour).toISOString(),
-            end_time: new Date(now.getTime() + 4 * hour).toISOString(),
-            status: 1,
-        },
-        {
-            id: '2',
-            auction_id: 'demo002def',
-            creator: 'aleo1demo...',
-            item_name: '[Demo] Premium Access Pass',
-            item_description: 'Exclusive access to the EquiClear premium features',
-            total_supply: 50,
-            remaining_supply: 50,
-            start_price: 5000,
-            reserve_price: 1000,
-            start_time: new Date(now.getTime() + 2 * hour).toISOString(),
-            end_time: new Date(now.getTime() + 8 * hour).toISOString(),
-            status: 0,
-        },
-        {
-            id: '3',
-            auction_id: 'demo003ghi',
-            creator: 'aleo1demo...',
-            item_name: '[Demo] Genesis Tokens',
-            item_description: 'Limited edition genesis tokens for early supporters',
-            total_supply: 200,
-            remaining_supply: 0,
-            start_price: 3000,
-            reserve_price: 500,
-            clearing_price: 1200,
-            start_time: new Date(now.getTime() - 10 * hour).toISOString(),
-            end_time: new Date(now.getTime() - 2 * hour).toISOString(),
-            status: 2,
-        },
-    ];
+function PhaseCard({ phase }: { phase: { title: string; status: string; desc: string; highlight: boolean } }) {
+    return (
+        <div
+            className="glass-card"
+            style={{
+                display: 'inline-block',
+                padding: 'var(--space-lg)',
+                borderRadius: 'var(--radius-lg)',
+                border: phase.highlight ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid var(--glass-border)',
+                background: phase.highlight
+                    ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(34, 211, 238, 0.06))'
+                    : 'rgba(255, 255, 255, 0.02)'
+            }}
+        >
+            <div style={{
+                display: 'inline-flex',
+                padding: '4px 10px',
+                borderRadius: '999px',
+                background: phase.highlight ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+                color: phase.highlight ? '#c7d2fe' : 'var(--text-secondary)',
+                fontSize: '0.8rem',
+                marginBottom: 'var(--space-sm)'
+            }}>
+                {phase.status}
+            </div>
+            <h3 style={{ marginBottom: 'var(--space-xs)' }}>{phase.title}</h3>
+            <p className="text-secondary" style={{ fontSize: '0.95rem' }}>
+                {phase.desc}
+            </p>
+        </div>
+    );
 }

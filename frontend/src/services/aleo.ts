@@ -6,7 +6,7 @@ const NETWORK = process.env.NEXT_PUBLIC_ALEO_NETWORK || 'testnet';
 
 // Contract program names
 export const CONTRACTS = {
-    BALANCE: process.env.NEXT_PUBLIC_BALANCE_CONTRACT || 'equiclear_balance.aleo',
+    BALANCE: process.env.NEXT_PUBLIC_BALANCE_CONTRACT || 'equiclear_balance_v2.aleo',
     AUCTION: process.env.NEXT_PUBLIC_AUCTION_CONTRACT || 'equiclear_auction.aleo',
     BID: process.env.NEXT_PUBLIC_BID_CONTRACT || 'equiclear_bid.aleo',
     CLAIM: process.env.NEXT_PUBLIC_CLAIM_CONTRACT || 'equiclear_claim.aleo',
