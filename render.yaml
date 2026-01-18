@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: equiclear-indexer
+    env: docker
+    rootDir: indexer
+    dockerfilePath: ./Dockerfile
+    plan: free
+    autoDeploy: true
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false

@@ -10,7 +10,7 @@ import {
     Network
 } from '@puzzlehq/sdk';
 import { requestSignature } from '@puzzlehq/sdk-core';
-import { aleoWallet } from '@/services/wallet';
+import aleoWallet from '@/services/wallet';
 import { useStore } from '@/store';
 import { calculateTotalBalance } from '@/services/balance';
 import { CONTRACTS } from '@/services/aleo';
@@ -150,8 +150,10 @@ function WalletInner({ children }: { children: React.ReactNode }) {
 
     // Sync with AleoWallet service for non-React components
     useEffect(() => {
-        if (aleoWallet) {
+        if (aleoWallet && typeof (aleoWallet as any).setAccount === 'function') {
             (aleoWallet as any).setAccount(address);
+        } else if (aleoWallet) {
+            console.warn('Aleo wallet instance missing setAccount()');
         }
 
         if (address) {
