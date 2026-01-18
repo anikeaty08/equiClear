@@ -5,6 +5,7 @@ import { TrendingDown, Loader2 } from 'lucide-react';
 import { useStore } from '@/store';
 import { aleoWallet } from '@/services/wallet';
 import { useRecords, Network } from '@puzzlehq/sdk';
+import { RecordStatus } from '@puzzlehq/types';
 import { parseBalanceRecord } from '@/services/balance';
 import { CONTRACTS } from '@/services/aleo';
 
@@ -32,14 +33,14 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
             filter: {
                 programIds: [CONTRACTS.BALANCE],
                 names: ['Balance'],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         } : {
             filter: {
                 programIds: [],
                 names: [],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         }

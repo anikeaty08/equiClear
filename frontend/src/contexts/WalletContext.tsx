@@ -14,6 +14,7 @@ import aleoWallet from '@/services/wallet';
 import { useStore } from '@/store';
 import { calculateTotalBalance } from '@/services/balance';
 import { CONTRACTS } from '@/services/aleo';
+import { RecordStatus } from '@puzzlehq/types';
 
 interface WalletState {
     connected: boolean;
@@ -101,14 +102,14 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             filter: {
                 programIds: [CONTRACTS.BALANCE],
                 names: ['Balance'],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         } : {
             filter: {
                 programIds: [],
                 names: [],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         }

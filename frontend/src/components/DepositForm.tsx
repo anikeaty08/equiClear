@@ -7,6 +7,7 @@ import { useWallet } from '@/contexts/WalletContext';
 import { useRecords } from '@puzzlehq/sdk';
 import { aleoWallet } from '@/services/wallet';
 import { getRecords, Network } from '@puzzlehq/sdk-core';
+import { RecordStatus } from '@puzzlehq/types';
 
 interface DepositFormProps {
     onSuccess?: () => void;
@@ -30,14 +31,14 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
             filter: {
                 programIds: ['credits.aleo'],
                 names: ['credits'],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         } : {
             filter: {
                 programIds: [],
                 names: [],
-                status: 'Unspent'
+                status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
         }
@@ -104,21 +105,21 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
         let records = await fetchAllPages({
             programIds: ['credits.aleo'],
             names: ['credits'],
-            status: 'Unspent',
+            status: RecordStatus.Unspent,
         });
 
         // 2) fallback without names
         if (records.length === 0) {
             records = await fetchAllPages({
                 programIds: ['credits.aleo'],
-                status: 'Unspent',
+                status: RecordStatus.Unspent,
             });
         }
 
         // 3) fallback to all unspent, then filter locally
         if (records.length === 0) {
             const all = await fetchAllPages({
-                status: 'Unspent',
+                status: RecordStatus.Unspent,
             });
             records = all.filter((record) => {
                 const recordStr = getRecordText(record);
