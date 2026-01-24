@@ -85,9 +85,9 @@ class ApiClient {
     // Lazily get the base URL - computed on first API call to ensure we're in the browser
     private getBaseUrl(): string {
         if (this.baseUrl) {
-            return this.baseUrl;
+            return this.baseUrl.replace(/\/$/, '');
         }
-        this.baseUrl = getApiBase();
+        this.baseUrl = getApiBase().replace(/\/$/, '');
         return this.baseUrl;
     }
 

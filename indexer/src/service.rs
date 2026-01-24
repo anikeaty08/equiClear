@@ -104,6 +104,11 @@ async fn health_check() -> &'static str {
     "OK"
 }
 
+/// Root handler
+async fn root_handler() -> Json<ApiResponse<&'static str>> {
+    Json(ApiResponse::success("EquiClear Indexer API is running 🚀"))
+}
+
 /// Get all auctions with optional filters
 async fn get_auctions(
     State(state): State<Arc<AppState>>,
