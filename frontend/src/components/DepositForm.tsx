@@ -89,7 +89,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
             while (true) {
                 const response = await getRecords({
                     filter,
-                    address: wallet.address,
+                    address: wallet.address ?? undefined,
                     network: Network.AleoTestnet,
                     page,
                 });
