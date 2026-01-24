@@ -4,9 +4,8 @@ import { motion } from 'framer-motion';
 import { ArrowDownToLine, Loader2 } from 'lucide-react';
 import { useStore } from '@/store';
 import { useWallet } from '@/contexts/WalletContext';
-import { useRecords } from '@puzzlehq/sdk';
+import { useRecords, getRecords, Network } from '@puzzlehq/sdk';
 import { aleoWallet } from '@/services/wallet';
-import { getRecords, Network } from '@puzzlehq/sdk-core';
 import { RecordStatus } from '@puzzlehq/types';
 
 interface DepositFormProps {
@@ -87,14 +86,14 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
             let page = 0;
             const all: any[] = [];
             while (true) {
+                // getRecords from @puzzlehq/sdk automatically uses the connected wallet
                 const response = await getRecords({
                     filter,
-                    address: wallet.address ?? undefined,
                     network: Network.AleoTestnet,
                     page,
-                });
+                } as any);
                 all.push(...(response?.records || []));
-                const pageCount = response?.pageCount ?? 0;
+                const pageCount = (response as any)?.pageCount ?? 0;
                 if (pageCount === 0 || page + 1 >= pageCount) break;
                 page += 1;
             }
