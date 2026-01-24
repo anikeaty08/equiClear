@@ -1,6 +1,22 @@
 // EquiClear API Client - Indexer Communication
 
-const API_BASE = process.env.NEXT_PUBLIC_INDEXER_URL || 'http://localhost:3001';
+// In production (Vercel), use the Render backend URL
+// In development, use localhost:3001
+const getApiBase = () => {
+    // First check for explicit env var
+    if (process.env.NEXT_PUBLIC_INDEXER_URL) {
+        return process.env.NEXT_PUBLIC_INDEXER_URL;
+    }
+    // In browser, check if we're on production domain
+    if (typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        if (hostname.includes('vercel.app') || hostname.includes('equiclear')) {
+            return 'https://equiclear.onrender.com';
+        }
+    }
+    // Default for local development
+    return 'http://localhost:3001';
+};
 
 export interface Auction {
     id: string;
@@ -58,15 +74,26 @@ interface ApiResponse<T> {
 }
 
 class ApiClient {
-    private baseUrl: string;
+    private baseUrl: string | null = null;
 
-    constructor(baseUrl: string = API_BASE) {
-        this.baseUrl = baseUrl;
+    constructor(baseUrl?: string) {
+        if (baseUrl) {
+            this.baseUrl = baseUrl;
+        }
+    }
+
+    // Lazily get the base URL - computed on first API call to ensure we're in the browser
+    private getBaseUrl(): string {
+        if (this.baseUrl) {
+            return this.baseUrl;
+        }
+        this.baseUrl = getApiBase();
+        return this.baseUrl;
     }
 
     private async fetch<T>(endpoint: string): Promise<T> {
         try {
-            const response = await fetch(`${this.baseUrl}${endpoint}`);
+            const response = await fetch(`${this.getBaseUrl()}${endpoint}`);
             const json: ApiResponse<T> = await response.json();
 
             if (!json.success || !json.data) {
@@ -111,7 +138,7 @@ class ApiClient {
     // Health check
     async healthCheck(): Promise<boolean> {
         try {
-            const response = await fetch(`${this.baseUrl}/health`);
+            const response = await fetch(`${this.getBaseUrl()}/health`);
             return response.ok;
         } catch {
             return false;

@@ -30,11 +30,18 @@ class AleoWallet {
   private connected = false;
   private address: string | null = null;
   private provider: WalletProvider = null;
+  private initialized = false;
 
   constructor() {
+    this.initialized = true;
     if (typeof window !== 'undefined') {
       this.initLeoAdapter();
     }
+  }
+
+  // Check if wallet is properly initialized
+  isInitialized(): boolean {
+    return this.initialized;
   }
 
   private initLeoAdapter() {

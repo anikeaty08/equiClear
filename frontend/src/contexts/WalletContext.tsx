@@ -151,10 +151,14 @@ function WalletInner({ children }: { children: React.ReactNode }) {
 
     // Sync with AleoWallet service for non-React components
     useEffect(() => {
-        if (aleoWallet && typeof (aleoWallet as any).setAccount === 'function') {
-            (aleoWallet as any).setAccount(address);
-        } else if (aleoWallet) {
-            console.warn('Aleo wallet instance missing setAccount()');
+        // Safely sync with aleoWallet singleton - wrapped in try/catch to handle bundling edge cases
+        try {
+            if (aleoWallet && aleoWallet.isInitialized && aleoWallet.isInitialized() && aleoWallet.setAccount) {
+                aleoWallet.setAccount(address);
+            }
+        } catch (e) {
+            // Silently ignore - wallet sync is optional for non-React components
+            console.debug('AleoWallet sync skipped:', e);
         }
 
         if (address) {
