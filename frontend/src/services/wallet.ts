@@ -48,7 +48,6 @@ class AleoWallet {
     try {
       this.leoAdapter = new LeoWalletAdapter({
         appName: 'EquiClear',
-        network: WalletAdapterNetwork.TestnetBeta,
       });
     } catch {
       this.leoAdapter = null;

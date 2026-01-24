@@ -165,7 +165,7 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             setWallet({
                 connected: true,
                 address: address,
-                network: (network === 'mainnet' ? 'mainnet' : 'testnet'),
+                network: 'testnet',
             });
         } else {
             resetWallet();
