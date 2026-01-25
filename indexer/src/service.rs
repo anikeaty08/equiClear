@@ -135,7 +135,8 @@ async fn get_auctions(
         Ok(auctions) => Ok(Json(ApiResponse::success(auctions))),
         Err(e) => {
             tracing::error!("Failed to get auctions: {}", e);
-            Ok(Json(ApiResponse::error("Failed to fetch auctions")))
+            // Return actual error for debugging
+            Ok(Json(ApiResponse::error(&format!("Failed to fetch auctions: {}", e))))
         }
     }
 }
