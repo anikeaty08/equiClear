@@ -44,6 +44,7 @@ async fn main() -> Result<(), anyhow::Error> {
     let state = Arc::new(AppState { supabase });
     
     // Start API server
+    // Trigger deployment
     start_server(state, port).await?;
     
     Ok(())
