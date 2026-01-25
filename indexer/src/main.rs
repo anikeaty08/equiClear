@@ -37,6 +37,14 @@ async fn main() -> Result<(), anyhow::Error> {
         .expect("Invalid PORT");
     
     // Initialize Supabase client
+    // Log Supabase URL (masked) for debugging
+    if supabase_url.len() > 10 {
+        let masked_url = format!("{}...", &supabase_url[..10]);
+        tracing::info!("🔗 Connecting to Supabase: {}", masked_url);
+    } else {
+        tracing::warn!("⚠️ Supabase URL seems too short!");
+    }
+
     let supabase = SupabaseClient::new(&supabase_url, &supabase_key);
     tracing::info!("✅ Connected to Supabase");
     

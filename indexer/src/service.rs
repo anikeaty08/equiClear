@@ -80,6 +80,10 @@ pub fn create_router(state: Arc<AppState>) -> Router {
         .allow_headers(Any);
     
     Router::new()
+        // Root endpoint (Welcome message)
+        .route("/", get(root_handler))
+        // Ping endpoint
+        .route("/ping", get(ping_handler))
         // Auction endpoints
         .route("/api/auctions", get(get_auctions))
         .route("/api/auctions/:id", get(get_auction))
@@ -107,6 +111,11 @@ async fn health_check() -> &'static str {
 /// Root handler
 async fn root_handler() -> Json<ApiResponse<&'static str>> {
     Json(ApiResponse::success("EquiClear Indexer API is running 🚀"))
+}
+
+/// Ping handler
+async fn ping_handler() -> Json<ApiResponse<&'static str>> {
+    Json(ApiResponse::success("pong"))
 }
 
 /// Get all auctions with optional filters
