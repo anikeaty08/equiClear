@@ -39,7 +39,6 @@ class AleoWallet {
     }
   }
 
-  // Check if wallet is properly initialized
   isInitialized(): boolean {
     return this.initialized;
   }
@@ -80,10 +79,8 @@ class AleoWallet {
           permissions: {
             programIds: {
               [Network.AleoTestnet]: [
-                CONTRACTS.BALANCE,
+                'credits.aleo',
                 CONTRACTS.AUCTION,
-                CONTRACTS.BID,
-                CONTRACTS.CLAIM,
               ],
             },
           },
@@ -215,8 +212,7 @@ class AleoWallet {
           inputs: inputs.length,
           fee: fee / 1000000
         });
-        
-        // requestCreateEvent will show signature popup in Puzzle Wallet
+
         const result = await requestCreateEvent({
           type: 'Execute',
           programId,
@@ -238,7 +234,7 @@ class AleoWallet {
           return { success: false, error: errorMsg };
         }
 
-        console.log('✅ Transaction signed and submitted:', txId);
+        console.log('Transaction signed and submitted:', txId);
         return { success: true, txId };
       } catch (error: any) {
         console.error('Transaction error:', error);
@@ -274,90 +270,7 @@ class AleoWallet {
     throw new Error('Unsupported wallet provider');
   }
 
-  async deposit(tokenId: string, amount: number, creditsRecord?: any): Promise<TransactionResult> {
-    if (!this.address || !this.connected) {
-      throw new Error('Wallet not connected');
-    }
-
-    const tid = tokenId.includes('field') ? tokenId : `${tokenId}field`;
-    const microcredits = amount * 1000000; // Convert credits to microcredits
-
-    // For Puzzle wallet: Execute deposit with a real credits record
-    if (this.provider === 'puzzle') {
-      try {
-        if (!creditsRecord) {
-          throw new Error('No credits record selected. Please select a credits record from your wallet.');
-        }
-        const credits = creditsRecord;
-        
-        return this.submitTransaction(CONTRACTS.BALANCE, 'deposit', [
-          this.address!,
-          credits,
-          tid,
-          `${Date.now()}u64`,
-        ], 100000); // Fee in microcredits
-      } catch (error: any) {
-        throw new Error(`Deposit failed: ${error.message || 'Failed to deposit Aleo testnet credits'}`);
-      }
-    }
-
-    // For Leo wallet
-    if (this.provider === 'leo' && this.leoAdapter) {
-      // Leo wallet handles credits transfer through the adapter
-      if (!creditsRecord) {
-        throw new Error('No credits record selected. Please select a credits record from your wallet.');
-      }
-      const credits = creditsRecord;
-
-    return this.submitTransaction(CONTRACTS.BALANCE, 'deposit', [
-      this.address!,
-      credits,
-      tid,
-      `${Date.now()}u64`,
-    ], 100000);
-    }
-
-    throw new Error('Unsupported wallet provider for deposits');
-  }
-
-  async createPrivateCredits(amount: number): Promise<TransactionResult> {
-    if (!this.address || !this.connected) {
-      throw new Error('Wallet not connected');
-    }
-
-    const microcredits = amount * 1000000;
-    if (!Number.isFinite(microcredits) || microcredits <= 0) {
-      throw new Error('Invalid amount for creating private credits record');
-    }
-
-    // Convert public credits to a private credits record for the user
-    // credits.aleo/transfer_public_to_private(recipient: address.private, amount: u64.public)
-    return this.submitTransaction('credits.aleo', 'transfer_public_to_private', [
-      this.address!,
-      `${microcredits}u64`,
-    ], 100000);
-  }
-
-  async withdraw(tokenId: string, amount: number, balanceRecord?: string): Promise<TransactionResult> {
-    if (!this.address || !this.connected) {
-      throw new Error('Wallet not connected');
-    }
-
-    const tid = tokenId.includes('field') ? tokenId : `${tokenId}field`;
-
-    // Withdraw requires a balance record - should be fetched from user's records
-    // In production, this would query the user's Balance records from the blockchain
-    const balance = balanceRecord || `{ owner: ${this.address}, token_id: ${tid}, amount: ${amount}u64 }`;
-
-    // Call withdraw - updates balance (credits transfer happens separately via credits.aleo)
-    return this.submitTransaction(CONTRACTS.BALANCE, 'withdraw', [
-      this.address!,
-      balance,
-      `${amount}u64`,
-      `${Date.now()}u64`,
-    ], 100000);
-  }
-
+  // Create a new auction
   async createAuction(
     itemName: string,
     supply: number,
@@ -366,46 +279,81 @@ class AleoWallet {
     startTime: number,
     endTime: number,
   ): Promise<TransactionResult> {
+    const nonce = `${Date.now()}field`;
     return this.submitTransaction(CONTRACTS.AUCTION, 'create_auction', [
-      this.address!,
       itemName,
       `${supply}u64`,
       `${startPrice}u64`,
       `${reservePrice}u64`,
       `${startTime}u64`,
       `${endTime}u64`,
+      nonce,
     ]);
   }
 
-  async placeBid(auctionId: string, qty: number, price: number, balanceRecord?: string): Promise<TransactionResult> {
+  // Place a bid - no balance record needed, just auction_id + amount + quantity
+  async placeBid(auctionId: string, amount: number, quantity: number): Promise<TransactionResult> {
     if (!this.address || !this.connected) {
       throw new Error('Wallet not connected');
     }
 
     const aid = auctionId.includes('field') ? auctionId : `${auctionId}field`;
-    const balance = balanceRecord || '{}'; // Balance record - should be provided from user's records
+    const nonce = `${Date.now()}field`;
 
-    // Place bid requires a balance record to deduct from
-    // The balance record should be fetched from user's records before calling this
-    return this.submitTransaction(CONTRACTS.BID, 'place_bid', [
-      this.address!,
-      balance,
+    return this.submitTransaction(CONTRACTS.AUCTION, 'place_bid', [
       aid,
-      `${qty}u64`,
-      `${price}u64`,
-      `${Date.now()}u64`,
+      `${amount}u64`,
+      `${quantity}u64`,
+      nonce,
     ], 100000);
   }
 
-  async claimItems(auctionId: string): Promise<TransactionResult> {
-    const aid = auctionId.includes('field') ? auctionId : `${auctionId}field`;
+  // Redeem a winning bid using public credits (atomic transfer to auctioneer)
+  async redeemBidPublic(auctioneerAddress: string, bidReceipt: any): Promise<TransactionResult> {
+    if (!this.address || !this.connected) {
+      throw new Error('Wallet not connected');
+    }
 
-    return this.submitTransaction(CONTRACTS.CLAIM, 'claim_items', [
-      this.address!,
-      '{}',
-      aid,
-      `${Date.now()}u64`,
-    ]);
+    return this.submitTransaction(CONTRACTS.AUCTION, 'redeem_bid_public', [
+      auctioneerAddress,
+      bidReceipt,
+    ], 200000);
+  }
+
+  // Redeem a winning bid using private credits record
+  async redeemBidPrivate(auctioneerAddress: string, bidReceipt: any, creditsRecord: any): Promise<TransactionResult> {
+    if (!this.address || !this.connected) {
+      throw new Error('Wallet not connected');
+    }
+
+    return this.submitTransaction(CONTRACTS.AUCTION, 'redeem_bid_private', [
+      auctioneerAddress,
+      bidReceipt,
+      creditsRecord,
+    ], 200000);
+  }
+
+  // Settle an auction (owner only, requires AuctionTicket record)
+  async settleAuction(auctionTicket: any, clearingPrice: number): Promise<TransactionResult> {
+    if (!this.address || !this.connected) {
+      throw new Error('Wallet not connected');
+    }
+
+    return this.submitTransaction(CONTRACTS.AUCTION, 'settle_auction', [
+      auctionTicket,
+      `${clearingPrice}u64`,
+    ], 100000);
+  }
+
+  // Cancel an auction (owner only, requires AuctionTicket record)
+  async cancelAuction(auctionTicket: any): Promise<TransactionResult> {
+    if (!this.address || !this.connected) {
+      throw new Error('Wallet not connected');
+    }
+
+    return this.submitTransaction(CONTRACTS.AUCTION, 'cancel_auction', [
+      auctionTicket,
+    ], 100000);
   }
 }
 

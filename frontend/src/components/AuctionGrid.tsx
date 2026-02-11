@@ -2,7 +2,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import AuctionCard from './AuctionCard';
-import { Auction } from '@/services/api';
+import { Auction } from '@/services/aleo';
 
 interface AuctionGridProps {
     auctions: Auction[];

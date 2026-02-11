@@ -2,13 +2,14 @@
 import React from 'react';
 import Head from 'next/head';
 import { motion } from 'framer-motion';
-import { Wallet, ArrowDownToLine, ArrowUpFromLine, History, ExternalLink } from 'lucide-react';
-import { BalanceCard, DepositForm, WithdrawForm, DisconnectedState } from '@/components';
+import { Wallet, History, ExternalLink, Receipt, Ticket } from 'lucide-react';
+import { DisconnectedState } from '@/components';
 import { useStore } from '@/store';
+import { useWallet } from '@/contexts/WalletContext';
 
 export default function WalletPage() {
     const { wallet, transactions } = useStore();
-    const [activeTab, setActiveTab] = React.useState<'deposit' | 'withdraw'>('deposit');
+    const { auctionTickets, bidReceipts } = useWallet();
 
     if (!wallet.connected) {
         return (
@@ -18,8 +19,8 @@ export default function WalletPage() {
                 </Head>
                 <div className="container" style={{ paddingTop: 'var(--space-2xl)', paddingBottom: 'var(--space-3xl)' }}>
                     <DisconnectedState
-                        title="Connect Wallet to Manage Balance"
-                        message="Connect your Puzzle or Leo wallet to deposit Aleo testnet tokens and start bidding in auctions"
+                        title="Connect Wallet to View Records"
+                        message="Connect your Puzzle or Leo wallet to view your auction tickets, bid receipts, and transaction history"
                         showFeatures={true}
                     />
                 </div>
@@ -58,52 +59,130 @@ export default function WalletPage() {
                         <div>
                             <h1 style={{ margin: 0 }}>Wallet</h1>
                             <p className="text-secondary" style={{ margin: 0 }}>
-                                Manage your internal balance for bidding
+                                Your auction tickets, bids, and transaction history
                             </p>
                         </div>
                     </div>
                 </motion.div>
 
                 <div className="grid grid-cols-3" style={{ gap: 'var(--space-xl)' }}>
-                    {/* Left Column - Balance & Forms */}
+                    {/* Left Column - Records */}
                     <div style={{ gridColumn: 'span 2' }}>
-                        {/* Balance Card */}
-                        <div style={{ marginBottom: 'var(--space-xl)' }}>
-                            <BalanceCard />
-                        </div>
-
-                        {/* Tab Navigation */}
-                        <div
-                            className="flex gap-sm"
-                            style={{ marginBottom: 'var(--space-lg)' }}
+                        {/* Connected Status Card */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="glass-card glow-effect"
+                            style={{
+                                padding: 'var(--space-xl)',
+                                background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(34, 211, 238, 0.05))',
+                                marginBottom: 'var(--space-xl)',
+                            }}
                         >
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className={`btn ${activeTab === 'deposit' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setActiveTab('deposit')}
-                                style={{ flex: 1, justifyContent: 'center' }}
+                            <div
+                                className="flex items-center gap-sm"
+                                style={{
+                                    padding: 'var(--space-md)',
+                                    background: 'rgba(16, 185, 129, 0.1)',
+                                    borderRadius: 'var(--radius-md)',
+                                    fontSize: '0.875rem',
+                                }}
                             >
-                                <ArrowDownToLine size={18} />
-                                Deposit
-                            </motion.button>
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                className={`btn ${activeTab === 'withdraw' ? 'btn-primary' : 'btn-secondary'}`}
-                                onClick={() => setActiveTab('withdraw')}
-                                style={{ flex: 1, justifyContent: 'center' }}
-                            >
-                                <ArrowUpFromLine size={18} />
-                                Withdraw
-                            </motion.button>
-                        </div>
+                                <div
+                                    style={{
+                                        width: '8px',
+                                        height: '8px',
+                                        borderRadius: '50%',
+                                        background: 'var(--color-success)',
+                                        animation: 'pulse 2s infinite',
+                                    }}
+                                />
+                                <span className="text-secondary">
+                                    Connected: {wallet.address?.slice(0, 12)}...{wallet.address?.slice(-6)}
+                                </span>
+                            </div>
+                        </motion.div>
 
-                        {/* Form */}
-                        {activeTab === 'deposit' ? <DepositForm /> : <WithdrawForm />}
+                        {/* Auction Tickets */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.1 }}
+                            className="glass-card"
+                            style={{ padding: 'var(--space-xl)', marginBottom: 'var(--space-xl)' }}
+                        >
+                            <div className="flex items-center gap-md" style={{ marginBottom: 'var(--space-lg)' }}>
+                                <Ticket size={20} className="text-secondary" />
+                                <h3 style={{ margin: 0 }}>Your Auction Tickets</h3>
+                                <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                                    ({auctionTickets.length})
+                                </span>
+                            </div>
+                            {auctionTickets.length === 0 ? (
+                                <p className="text-muted" style={{ padding: 'var(--space-lg)', textAlign: 'center' }}>
+                                    No auction tickets yet. Create an auction to get started.
+                                </p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                    {auctionTickets.map((ticket: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                padding: 'var(--space-md)',
+                                                borderRadius: 'var(--radius-md)',
+                                                background: 'rgba(255, 255, 255, 0.03)',
+                                                fontSize: '0.85rem',
+                                            }}
+                                            className="text-secondary"
+                                        >
+                                            Auction Ticket #{i + 1}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
+
+                        {/* Bid Receipts */}
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.2 }}
+                            className="glass-card"
+                            style={{ padding: 'var(--space-xl)' }}
+                        >
+                            <div className="flex items-center gap-md" style={{ marginBottom: 'var(--space-lg)' }}>
+                                <Receipt size={20} className="text-secondary" />
+                                <h3 style={{ margin: 0 }}>Your Bid Receipts</h3>
+                                <span className="text-muted" style={{ fontSize: '0.8rem' }}>
+                                    ({bidReceipts.length})
+                                </span>
+                            </div>
+                            {bidReceipts.length === 0 ? (
+                                <p className="text-muted" style={{ padding: 'var(--space-lg)', textAlign: 'center' }}>
+                                    No bid receipts yet. Place a bid on an auction to get started.
+                                </p>
+                            ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-md)' }}>
+                                    {bidReceipts.map((receipt: any, i: number) => (
+                                        <div
+                                            key={i}
+                                            style={{
+                                                padding: 'var(--space-md)',
+                                                borderRadius: 'var(--radius-md)',
+                                                background: 'rgba(255, 255, 255, 0.03)',
+                                                fontSize: '0.85rem',
+                                            }}
+                                            className="text-secondary"
+                                        >
+                                            Bid Receipt #{i + 1}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </motion.div>
                     </div>
 
-                    {/* Right Column - Transaction History */}
+                    {/* Right Column - Transaction History & Info */}
                     <div>
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
@@ -116,11 +195,7 @@ export default function WalletPage() {
                                 <h3 style={{ margin: 0 }}>Recent Transactions</h3>
                             </div>
 
-                            {!wallet.connected ? (
-                                <div className="text-center" style={{ padding: 'var(--space-xl)' }}>
-                                    <p className="text-muted">Connect wallet to view transactions</p>
-                                </div>
-                            ) : transactions.length === 0 ? (
+                            {transactions.length === 0 ? (
                                 <div className="text-center" style={{ padding: 'var(--space-xl)' }}>
                                     <p className="text-muted">No transactions yet</p>
                                 </div>
@@ -132,7 +207,7 @@ export default function WalletPage() {
                                 </div>
                             )}
 
-                            {wallet.connected && transactions.length > 0 && (
+                            {transactions.length > 0 && (
                                 <motion.button
                                     whileHover={{ scale: 1.02 }}
                                     className="btn btn-secondary"
@@ -144,7 +219,7 @@ export default function WalletPage() {
                             )}
                         </motion.div>
 
-                        {/* Info Cards */}
+                        {/* Info Card */}
                         <motion.div
                             initial={{ opacity: 0, x: 20 }}
                             animate={{ opacity: 1, x: 0 }}
@@ -155,22 +230,29 @@ export default function WalletPage() {
                             <h4 style={{ marginBottom: 'var(--space-md)', fontSize: '0.95rem' }}>How It Works</h4>
                             <ul style={{ margin: 0, paddingLeft: 'var(--space-lg)', fontSize: '0.85rem' }} className="text-secondary">
                                 <li style={{ marginBottom: 'var(--space-sm)' }}>
-                                    Deposit tokens to your internal balance
+                                    No deposits needed - bid directly on auctions
                                 </li>
                                 <li style={{ marginBottom: 'var(--space-sm)' }}>
-                                    Use internal balance to place private bids
+                                    Bids are private commitments using ZK proofs
                                 </li>
                                 <li style={{ marginBottom: 'var(--space-sm)' }}>
-                                    Withdraw unused tokens anytime
+                                    Winners pay at redemption via atomic credits transfer
                                 </li>
                                 <li>
-                                    All transactions use ZK proofs for privacy
+                                    No custody risk - credits stay in your wallet until settlement
                                 </li>
                             </ul>
                         </motion.div>
                     </div>
                 </div>
             </div>
+
+            <style jsx>{`
+                @keyframes pulse {
+                    0%, 100% { opacity: 1; }
+                    50% { opacity: 0.5; }
+                }
+            `}</style>
         </>
     );
 }
@@ -178,12 +260,10 @@ export default function WalletPage() {
 function TransactionItem({ transaction, index }: { transaction: any; index: number }) {
     const getTypeStyles = () => {
         switch (transaction.type) {
-            case 'deposit':
-            case 'refund':
-                return { color: 'var(--color-success)', prefix: '+' };
-            case 'withdraw':
             case 'bid':
-                return { color: 'var(--color-error)', prefix: '' };
+                return { color: 'var(--color-primary)', prefix: '' };
+            case 'redeem':
+                return { color: 'var(--color-success)', prefix: '-' };
             case 'claim':
                 return { color: 'var(--color-secondary)', prefix: '' };
             default:
@@ -230,4 +310,3 @@ function TransactionItem({ transaction, index }: { transaction: any; index: numb
         </motion.div>
     );
 }
-

@@ -4,10 +4,6 @@ import { motion } from 'framer-motion';
 import { TrendingDown, Loader2 } from 'lucide-react';
 import { useStore } from '@/store';
 import { aleoWallet } from '@/services/wallet';
-import { useRecords, Network } from '@puzzlehq/sdk';
-import { RecordStatus } from '@puzzlehq/types';
-import { parseBalanceRecord } from '@/services/balance';
-import { CONTRACTS } from '@/services/aleo';
 
 interface BidFormProps {
     auctionId: string;
@@ -17,59 +13,13 @@ interface BidFormProps {
 }
 
 export default function BidForm({ auctionId, currentPrice, remainingSupply, onSuccess }: BidFormProps) {
-    const { wallet, addNotification, userBalance } = useStore();
+    const { wallet, addNotification } = useStore();
     const [quantity, setQuantity] = React.useState('');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     const qty = parseInt(quantity) || 0;
     const totalCost = qty > 0 ? qty * currentPrice : 0;
-    const insufficientBalance = totalCost > userBalance;
     const maxQuantity = Math.max(0, remainingSupply);
-
-    // Fetch balance records from Puzzle wallet when connected
-    // @ts-ignore - useRecords hook from Puzzle SDK
-    const balanceRecordsResult = useRecords(
-        wallet.connected ? {
-            filter: {
-                programIds: [CONTRACTS.BALANCE],
-                names: ['Balance'],
-                status: RecordStatus.Unspent
-            },
-            network: Network.AleoTestnet
-        } : {
-            filter: {
-                programIds: [],
-                names: [],
-                status: RecordStatus.Unspent
-            },
-            network: Network.AleoTestnet
-        }
-    );
-
-    const balanceRecords = balanceRecordsResult?.records || [];
-
-    const getRecordText = (record: any): string => {
-        if (typeof record === 'string') return record;
-        if (record?.record && typeof record.record === 'string') return record.record;
-        if (record?.plaintext && typeof record.plaintext === 'string') return record.plaintext;
-        return JSON.stringify(record);
-    };
-
-    const selectBalanceRecord = (neededAmount: number): string | null => {
-        for (const record of balanceRecords) {
-            const recordStr = getRecordText(record);
-            const parsed = parseBalanceRecord(recordStr);
-            if (!parsed) continue;
-            const recordTokenId = parsed.token_id?.toString() || '';
-            const tokenMatches = recordTokenId.includes('1field') || recordTokenId === '1';
-            const amountStr = parsed.amount.toString().replace('u64', '');
-            const amountValue = parseInt(amountStr, 10) || 0;
-            if (tokenMatches && amountValue >= neededAmount) {
-                return recordStr;
-            }
-        }
-        return null;
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -101,38 +51,17 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
             return;
         }
 
-        if (insufficientBalance || totalCost <= 0) {
-            addNotification({
-                type: 'error',
-                title: 'Insufficient Balance',
-                message: 'Your internal balance is not enough for this bid.',
-            });
-            return;
-        }
-
-        if (balanceRecords.length === 0) {
-            addNotification({
-                type: 'warning',
-                title: 'No Balance Records',
-                message: 'No balance records found. Deposit credits before placing a bid.',
-            });
-            return;
-        }
-
         setIsSubmitting(true);
         try {
-            const selectedRecord = selectBalanceRecord(totalCost);
-            if (!selectedRecord) {
-                throw new Error('No balance record found with sufficient amount. Deposit more credits or consolidate balances.');
-            }
-
-            const result = await aleoWallet.placeBid(auctionId, qty, currentPrice, selectedRecord);
+            // No balance record needed - bid is just a commitment.
+            // Payment happens at redemption time via credits.aleo transfer.
+            const result = await aleoWallet.placeBid(auctionId, currentPrice, qty);
 
             if (result.success) {
                 addNotification({
                     type: 'success',
                     title: 'Bid Submitted!',
-                    message: `Bid placed for ${qty.toLocaleString()} item(s) at ${currentPrice.toLocaleString()} Aleo credits each. Amount deducted from your balance.`,
+                    message: `Bid placed for ${qty.toLocaleString()} item(s) at ${currentPrice.toLocaleString()} credits each. You'll pay at redemption if you win.`,
                 });
                 setQuantity('');
                 onSuccess?.();
@@ -155,7 +84,6 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
         !wallet.connected ||
         qty <= 0 ||
         totalCost <= 0 ||
-        insufficientBalance ||
         maxQuantity <= 0;
 
     return (
@@ -182,7 +110,7 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
                 <div>
                     <h3 style={{ margin: 0 }}>Place Bid</h3>
                     <span className="text-muted" style={{ fontSize: '0.875rem' }}>
-                        Place a bid using your Aleo testnet credits balance
+                        No deposit needed - pay only if you win
                     </span>
                 </div>
             </div>
@@ -240,21 +168,27 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
                         <span className="text-secondary">{currentPrice.toLocaleString()} credits</span>
                     </div>
                     <div className="flex justify-between" style={{ fontSize: '0.875rem' }}>
-                        <span className="text-muted">Total cost</span>
+                        <span className="text-muted">Total cost (if you win)</span>
                         <span
                             className="text-secondary"
-                            style={{
-                                color: insufficientBalance ? 'var(--color-error)' : 'var(--text-secondary)',
-                                fontWeight: 600,
-                            }}
+                            style={{ fontWeight: 600 }}
                         >
                             {totalCost > 0 ? totalCost.toLocaleString() : '-'} credits
                         </span>
                     </div>
-                    <div className="flex justify-between" style={{ marginTop: 'var(--space-xs)', fontSize: '0.75rem' }}>
-                        <span className="text-muted">Your balance</span>
-                        <span className="text-secondary">{userBalance.toLocaleString()} credits</span>
-                    </div>
+                </div>
+
+                <div
+                    style={{
+                        marginBottom: 'var(--space-lg)',
+                        padding: 'var(--space-md)',
+                        background: 'rgba(34, 211, 238, 0.05)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: '0.8rem',
+                    }}
+                    className="text-secondary"
+                >
+                    Credits are only transferred when you redeem a winning bid after the auction settles.
                 </div>
 
                 <motion.button
@@ -276,8 +210,6 @@ export default function BidForm({ auctionId, currentPrice, remainingSupply, onSu
                         </>
                     ) : !wallet.connected ? (
                         'Connect Wallet to Bid'
-                    ) : insufficientBalance ? (
-                        'Insufficient Balance'
                     ) : maxQuantity <= 0 ? (
                         'No Items Available'
                     ) : qty <= 0 ? (

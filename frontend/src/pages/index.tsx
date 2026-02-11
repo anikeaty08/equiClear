@@ -6,35 +6,36 @@ import { motion } from 'framer-motion';
 import { AuctionGrid, DisconnectedState } from '@/components';
 import { useStore } from '@/store';
 import { useWallet } from '@/contexts/WalletContext';
-import api from '@/services/api';
-import { 
-    TrendingDown, Shield, Coins, Zap, ArrowRight, 
+import { aleoService } from '@/services/aleo';
+import {
+    TrendingDown, Shield, Coins, Zap, ArrowRight,
     Clock, Users, Sparkles, Lock, Globe, Eye, CheckCircle
 } from 'lucide-react';
 
 export default function HomePage() {
-    const { auctions, setAuctions, isLoading, setLoading } = useStore();
+    const { auctions, setAuctions, isLoading, setLoading, knownAuctionIds } = useStore();
     const { connected } = useWallet();
     const [initialLoaded, setInitialLoaded] = React.useState(false);
 
+    // Load auctions from known IDs stored locally + on-chain verification
     React.useEffect(() => {
         let cancelled = false;
 
         const loadAuctions = async () => {
+            if (knownAuctionIds.length === 0) {
+                setAuctions([]);
+                setInitialLoaded(true);
+                return;
+            }
+
             setLoading(true);
             try {
-                const data = await api.getAuctions(connected ? '1' : undefined);
+                const results = await Promise.all(
+                    knownAuctionIds.map((id) => aleoService.getAuction(id))
+                );
                 if (!cancelled) {
-                    const now = new Date();
-                    const filtered = connected
-                        ? data.filter((auction) => {
-                            const start = new Date(auction.start_time);
-                            const end = new Date(auction.end_time);
-                            return auction.status === 1 && start <= now && end > now;
-                        })
-                        : data;
-
-                    setAuctions(filtered);
+                    const valid = results.filter((a): a is NonNullable<typeof a> => a !== null);
+                    setAuctions(valid);
                     setInitialLoaded(true);
                 }
             } catch (error) {
@@ -51,7 +52,7 @@ export default function HomePage() {
         return () => {
             cancelled = true;
         };
-    }, [setAuctions, setLoading, connected]);
+    }, [setAuctions, setLoading, knownAuctionIds, connected]);
 
     // Show feature showcase when not connected
     if (!connected) {
@@ -83,7 +84,7 @@ export default function HomePage() {
             {
                 icon: <Coins size={36} />,
                 title: 'Real Aleo Credits',
-                desc: 'Deposit and bid with real Aleo testnet credits. Fully on-chain and verifiable',
+                desc: 'Bid with real Aleo credits. Pay only when you win - no deposits or custody needed',
                 color: 'rgba(16, 185, 129, 0.2)',
                 iconColor: '#10b981',
                 gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05))'
@@ -328,9 +329,9 @@ export default function HomePage() {
                         <div className="grid grid-cols-4" style={{ gap: 'var(--space-lg)' }}>
                             {[
                                 { step: '1', title: 'Connect Wallet', desc: 'Link your Puzzle or Leo wallet to get started', icon: <Lock size={24} /> },
-                                { step: '2', title: 'Deposit Credits', desc: 'Add real Aleo testnet credits to your internal balance', icon: <Coins size={24} /> },
-                                { step: '3', title: 'Place Bids', desc: 'Submit private bids on active Dutch auctions', icon: <TrendingDown size={24} /> },
-                                { step: '4', title: 'Settle & Claim', desc: 'Winners pay clearing price, losers get full refunds', icon: <Zap size={24} /> }
+                                { step: '2', title: 'Place Bids', desc: 'Submit private bids on active Dutch auctions - no deposit needed', icon: <TrendingDown size={24} /> },
+                                { step: '3', title: 'Auction Settles', desc: 'Owner settles with uniform clearing price after auction ends', icon: <Coins size={24} /> },
+                                { step: '4', title: 'Redeem & Pay', desc: 'Winners pay atomically at redemption - credits go direct to auctioneer', icon: <Zap size={24} /> }
                             ].map((item, i) => (
                                 <motion.div
                                     key={i}
@@ -475,7 +476,7 @@ export default function HomePage() {
                         <div>
                             <h1 style={{ marginBottom: 'var(--space-sm)' }}>Live Auctions</h1>
                     <p className="text-secondary">
-                        Deposit into your internal wallet, place private bids, and withdraw after settlement.
+                        Place private bids on active auctions. Winners pay at redemption - no deposits needed.
                     </p>
                         </div>
                         <motion.div

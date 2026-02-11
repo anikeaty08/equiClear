@@ -12,7 +12,6 @@ import {
 import { requestSignature } from '@puzzlehq/sdk-core';
 import aleoWallet from '@/services/wallet';
 import { useStore } from '@/store';
-import { calculateTotalBalance } from '@/services/balance';
 import { CONTRACTS } from '@/services/aleo';
 import { RecordStatus } from '@puzzlehq/types';
 
@@ -28,6 +27,8 @@ interface WalletState {
 interface WalletContextType extends WalletState {
     connect: () => Promise<void>;
     disconnect: () => Promise<void>;
+    auctionTickets: any[];
+    bidReceipts: any[];
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -43,12 +44,10 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 function WalletInner({ children }: { children: React.ReactNode }) {
     const { account } = useAccount();
     const { isConnected } = useIsConnected();
-    
-    // Track if user explicitly connected (clicked button) - prevents auto-connection
+
     const [explicitlyConnected, setExplicitlyConnected] = useState(false);
     const [isConnecting, setIsConnecting] = useState(false);
-    
-    // Configure connection request for Puzzle wallet
+
     const connectRequest = useMemo(() => ({
         dAppInfo: {
             name: "EquiClear",
@@ -59,22 +58,16 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             programIds: {
                 [Network.AleoTestnet]: [
                     'credits.aleo',
-                    CONTRACTS.BALANCE,
                     CONTRACTS.AUCTION,
-                    CONTRACTS.BID,
-                    CONTRACTS.CLAIM
                 ]
             }
         }
     }), []);
 
-    // Use Puzzle SDK hook for connection (recommended by docs)
     const { connect, loading: connectLoading, error: connectError } = useConnect(connectRequest);
     const { disconnect, loading: disconnectLoading } = useDisconnect();
     const { setWallet, resetWallet, setUserBalance } = useStore();
 
-    // On mount: If account exists but we didn't explicitly connect, disconnect it
-    // This ensures users must explicitly connect every time
     const autoDisconnectOnceRef = React.useRef(false);
 
     useEffect(() => {
@@ -82,26 +75,22 @@ function WalletInner({ children }: { children: React.ReactNode }) {
         if (account && !explicitlyConnected && isConnected && !isConnecting) {
             autoDisconnectOnceRef.current = true;
             console.log('Puzzle Wallet auto-connected - disconnecting to force manual connection...');
-            disconnect().catch(() => {
-                // Ignore errors, just clear local state
-            });
+            disconnect().catch(() => {});
         }
     }, [account, explicitlyConnected, isConnected, isConnecting, disconnect]);
 
-    // Derived state - define before useRecords
-    // Only consider connected if we explicitly connected AND account exists
     const connected = explicitlyConnected && !!account && !!isConnected;
     const address = (explicitlyConnected && account) ? account.address : null;
     const network = account?.network || 'testnet';
     const loading = connectLoading || disconnectLoading;
 
-    // Only fetch records when connected - always call hook but with safe config
-    // @ts-ignore - useRecords hook from Puzzle SDK
-    const recordsResult = useRecords(
+    // Fetch AuctionTicket records
+    // @ts-ignore
+    const ticketRecordsResult = useRecords(
         connected && account?.address ? {
             filter: {
-                programIds: [CONTRACTS.BALANCE],
-                names: ['Balance'],
+                programIds: [CONTRACTS.AUCTION],
+                names: ['AuctionTicket'],
                 status: RecordStatus.Unspent
             },
             network: Network.AleoTestnet
@@ -114,50 +103,41 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             network: Network.AleoTestnet
         }
     );
-    
-    // Safely extract records and loading state
-    const records = recordsResult?.records || [];
-    const recordsLoading = recordsResult?.loading || false;
+
+    // Fetch BidReceipt records
+    // @ts-ignore
+    const bidRecordsResult = useRecords(
+        connected && account?.address ? {
+            filter: {
+                programIds: [CONTRACTS.AUCTION],
+                names: ['BidReceipt'],
+                status: RecordStatus.Unspent
+            },
+            network: Network.AleoTestnet
+        } : {
+            filter: {
+                programIds: [],
+                names: [],
+                status: RecordStatus.Unspent
+            },
+            network: Network.AleoTestnet
+        }
+    );
+
+    const auctionTickets = ticketRecordsResult?.records || [];
+    const bidReceipts = bidRecordsResult?.records || [];
+    const recordsLoading = (ticketRecordsResult?.loading || false) || (bidRecordsResult?.loading || false);
     const recordsLoadingActive = connected ? recordsLoading : false;
 
     const [balance, setBalance] = useState(0);
 
-    // Calculate total balance from Balance records
-    useEffect(() => {
-        if (records && records.length > 0 && address) {
-            // Filter to Balance records from the configured balance contract
-            const balanceRecords = records.filter((r: any) => {
-                const recordStr = typeof r === 'string' ? r : JSON.stringify(r);
-                const isReceipt = recordStr.includes('DepositReceipt') || recordStr.includes('WithdrawReceipt');
-                const isBalanceRecord = recordStr.includes('Balance');
-                const isFromBalanceProgram = recordStr.includes(CONTRACTS.BALANCE);
-                return !isReceipt && (isBalanceRecord || isFromBalanceProgram);
-            });
-            
-            if (balanceRecords.length > 0) {
-                const total = calculateTotalBalance(balanceRecords, '1field');
-                setBalance(total);
-                setUserBalance(total);
-            } else {
-                setBalance(0);
-                setUserBalance(0);
-            }
-        } else if (address && !recordsLoading) {
-            // No records found, balance is 0
-            setBalance(0);
-            setUserBalance(0);
-        }
-    }, [records, address, recordsLoading, setUserBalance]);
-
     // Sync with AleoWallet service for non-React components
     useEffect(() => {
-        // Safely sync with aleoWallet singleton - wrapped in try/catch to handle bundling edge cases
         try {
             if (aleoWallet && aleoWallet.isInitialized && aleoWallet.isInitialized() && aleoWallet.setAccount) {
                 aleoWallet.setAccount(address);
             }
         } catch (e) {
-            // Silently ignore - wallet sync is optional for non-React components
             console.debug('AleoWallet sync skipped:', e);
         }
 
@@ -174,17 +154,12 @@ function WalletInner({ children }: { children: React.ReactNode }) {
         }
     }, [address, network, setWallet, resetWallet, setUserBalance]);
 
-    // Wrapper for connect using Puzzle SDK hook
-    // This will ALWAYS prompt for signature/permission like faucet.aleo.org
     const handleConnect = async () => {
-        // Prevent multiple simultaneous connection attempts
         if (connectLoading) {
             console.log('Connection already in progress');
             return;
         }
 
-        // Don't allow reconnecting if already connected - user must disconnect first
-        // This ensures every connection requires explicit permission
         if (connected && account) {
             console.log('Already connected. Please disconnect first to reconnect.');
             const { addNotification } = useStore.getState();
@@ -199,7 +174,6 @@ function WalletInner({ children }: { children: React.ReactNode }) {
         }
 
         try {
-            // Check if Puzzle wallet is available
             if (typeof window !== 'undefined') {
                 const w = window as any;
                 if (!w.puzzle && !w.puzzleWallet) {
@@ -210,10 +184,8 @@ function WalletInner({ children }: { children: React.ReactNode }) {
                 }
             }
 
-            // Mark intent to connect so auto-disconnect doesn't race
             setIsConnecting(true);
 
-            // Use Puzzle SDK connect() to trigger wallet popup
             console.log('Requesting connection with signature...');
             console.log('Requesting permissions for programs:', connectRequest.permissions.programIds[Network.AleoTestnet]);
 
@@ -228,7 +200,6 @@ function WalletInner({ children }: { children: React.ReactNode }) {
                 (result as any)?.connection?.network ||
                 account?.network;
 
-            // Require a signature on every connect
             const signatureMessage = `EquiClear connection approval\nAddress: ${connectedAddress}\nTime: ${new Date().toISOString()}`;
             await requestSignature({
                 message: signatureMessage,
@@ -236,23 +207,18 @@ function WalletInner({ children }: { children: React.ReactNode }) {
                 network: connectedNetwork as any,
             });
 
-            // Mark as explicitly connected after signature succeeds
             setExplicitlyConnected(true);
 
-            console.log('✅ Account connected:', connectedAddress);
-            console.log('✅ Network:', connectedNetwork);
-            console.log('✅ Contracts accessible:', connectRequest.permissions.programIds[Network.AleoTestnet]);
+            console.log('Account connected:', connectedAddress);
+            console.log('Network:', connectedNetwork);
         } catch (e: any) {
             console.error("Connection failed", e);
             setExplicitlyConnected(false);
             setIsConnecting(false);
-            disconnect().catch(() => {
-                // ignore
-            });
-            
-            // Show user-friendly error message
+            disconnect().catch(() => {});
+
             let errorMessage = 'Failed to connect wallet. ';
-            
+
             if (e?.message) {
                 errorMessage += e.message;
             } else if (e?.toString) {
@@ -260,8 +226,7 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             } else {
                 errorMessage += 'Please ensure Puzzle Wallet is installed and unlocked.';
             }
-            
-            // Use notification system if available, otherwise alert
+
             const { addNotification } = useStore.getState();
             if (addNotification) {
                 addNotification({
@@ -276,8 +241,7 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             setIsConnecting(false);
         }
     };
-    
-    // Log connection state changes
+
     useEffect(() => {
         if (connectError) {
             console.error('Puzzle wallet connection error:', connectError);
@@ -289,29 +253,21 @@ function WalletInner({ children }: { children: React.ReactNode }) {
 
     const handleDisconnect = async () => {
         try {
-            // Clear explicit connection flag FIRST
             setExplicitlyConnected(false);
-            
-            // Clear all local state
             resetWallet();
             setBalance(0);
             setUserBalance(0);
-            
-            // Disconnect from Puzzle SDK
             await disconnect();
-            
             console.log('Wallet disconnected - next connection will require signature');
         } catch (e) {
             console.error("Disconnect failed", e);
-            // Still clear local state even if SDK disconnect fails
             setExplicitlyConnected(false);
             resetWallet();
             setBalance(0);
             setUserBalance(0);
         }
     };
-    
-    // Watch for account changes - if account disappears, clear explicit connection
+
     useEffect(() => {
         if (!account && explicitlyConnected) {
             console.log('Account disconnected - clearing explicit connection flag');
@@ -324,12 +280,14 @@ function WalletInner({ children }: { children: React.ReactNode }) {
             value={{
                 connected,
                 address,
-                balance: balance, // Real balance fetched from on-chain records
+                balance,
                 network,
                 loading: loading || recordsLoadingActive,
-                providerType: 'puzzle', // Defaulting to puzzle/unified
+                providerType: 'puzzle',
                 connect: handleConnect,
                 disconnect: handleDisconnect,
+                auctionTickets,
+                bidReceipts,
             }}
         >
             {children}

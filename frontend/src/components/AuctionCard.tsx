@@ -3,7 +3,7 @@ import React from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Clock, Users, TrendingDown, ArrowRight } from 'lucide-react';
-import { Auction } from '@/services/api';
+import { Auction } from '@/services/aleo';
 import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
 
 interface AuctionCardProps {
@@ -15,8 +15,8 @@ export default function AuctionCard({ auction, index = 0 }: AuctionCardProps) {
     const [currentPrice, setCurrentPrice] = React.useState(auction.start_price);
     const [timeRemaining, setTimeRemaining] = React.useState('');
 
-    const startTime = new Date(auction.start_time);
-    const endTime = new Date(auction.end_time);
+    const startTime = new Date(auction.start_time * 1000);
+    const endTime = new Date(auction.end_time * 1000);
     const now = new Date();
 
     const isActive = auction.status === 1;
@@ -108,7 +108,7 @@ export default function AuctionCard({ auction, index = 0 }: AuctionCardProps) {
                             WebkitBoxOrient: 'vertical',
                             overflow: 'hidden'
                         }}>
-                            {auction.item_description || 'Dutch auction with uniform clearing price'}
+                            Dutch auction with uniform clearing price
                         </p>
 
                         {/* Price Display */}

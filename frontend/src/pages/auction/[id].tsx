@@ -4,11 +4,10 @@ import React from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { motion } from 'framer-motion';
-import { Clock, Users, TrendingDown, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Clock, Users, TrendingDown, ArrowLeft } from 'lucide-react';
 import { BidForm, DisconnectedState } from '@/components';
 import { useStore } from '@/store';
-import api from '@/services/api';
-import { Auction } from '@/services/api';
+import { aleoService, Auction } from '@/services/aleo';
 import { formatDistanceToNow, differenceInSeconds } from 'date-fns';
 
 export default function AuctionDetailPage() {
@@ -19,31 +18,30 @@ export default function AuctionDetailPage() {
     const [loading, setLoading] = React.useState(true);
     const [currentPrice, setCurrentPrice] = React.useState(0);
 
+    const loadAuction = React.useCallback(async (auctionId: string) => {
+        setLoading(true);
+        try {
+            const data = await aleoService.getAuction(auctionId);
+            setAuction(data);
+            if (data) setCurrentPrice(data.start_price);
+        } catch (error) {
+            console.error('Failed to load auction', error);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     React.useEffect(() => {
         if (!id) return;
-
-        const loadAuction = async () => {
-            setLoading(true);
-            try {
-                const data = await api.getAuction(id as string);
-                setAuction(data);
-                setCurrentPrice(data.start_price);
-            } catch (error) {
-                console.error('Failed to load auction', error);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        loadAuction();
-    }, [id]);
+        loadAuction(id as string);
+    }, [id, loadAuction]);
 
     // Calculate Dutch auction price decay
     React.useEffect(() => {
         if (!auction || auction.status !== 1) return;
 
-        const startTime = new Date(auction.start_time);
-        const endTime = new Date(auction.end_time);
+        const startTime = new Date(auction.start_time * 1000);
+        const endTime = new Date(auction.end_time * 1000);
 
         const updatePrice = () => {
             const now = new Date();
@@ -97,7 +95,7 @@ export default function AuctionDetailPage() {
                     >
                         <h2 style={{ marginBottom: 'var(--space-md)' }}>Auction Not Found</h2>
                         <p className="text-secondary" style={{ marginBottom: 'var(--space-xl)' }}>
-                            The auction you're looking for doesn't exist or has been removed.
+                            The auction you're looking for doesn't exist on-chain or has been cancelled.
                         </p>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
@@ -114,8 +112,8 @@ export default function AuctionDetailPage() {
         );
     }
 
-    const startTime = new Date(auction.start_time);
-    const endTime = new Date(auction.end_time);
+    const startTime = new Date(auction.start_time * 1000);
+    const endTime = new Date(auction.end_time * 1000);
     const now = new Date();
     const isActive = auction.status === 1;
     const isSettled = auction.status === 2;
@@ -158,22 +156,16 @@ export default function AuctionDetailPage() {
                             <div className="flex justify-between items-start" style={{ marginBottom: 'var(--space-lg)' }}>
                                 <div>
                                     <div className="flex items-center gap-md" style={{ marginBottom: 'var(--space-sm)' }}>
-                                        {isActive && <span className="badge badge-live">● Live</span>}
+                                        {isActive && <span className="badge badge-live">Live</span>}
                                         {isSettled && <span className="badge badge-settled">Settled</span>}
                                         {auction.status === 0 && <span className="badge badge-upcoming">Upcoming</span>}
+                                        {auction.status === 3 && <span className="badge">Cancelled</span>}
                                     </div>
                                     <h1 style={{ margin: 0, fontSize: '2rem' }}>
-                                        {auction.item_name || `Auction #${auction.auction_id.slice(0, 8)}`}
+                                        {auction.item_name}
                                     </h1>
                                 </div>
                             </div>
-
-                            {/* Description */}
-                            {auction.item_description && (
-                                <p className="text-secondary" style={{ marginBottom: 'var(--space-xl)', fontSize: '1rem' }}>
-                                    {auction.item_description}
-                                </p>
-                            )}
 
                             {/* Price Display */}
                             <div style={{ marginBottom: 'var(--space-xl)' }}>
@@ -217,7 +209,7 @@ export default function AuctionDetailPage() {
                                         <span className="text-muted" style={{ fontSize: '0.875rem' }}>Supply</span>
                                     </div>
                                     <div className="text-secondary" style={{ fontSize: '1.25rem', fontWeight: 600 }}>
-                                        {auction.remaining_supply} / {auction.total_supply} remaining
+                                        {auction.total_supply} items | {auction.bid_count} bids
                                     </div>
                                 </div>
                                 <div className="glass-card" style={{ padding: 'var(--space-md)' }}>
@@ -252,10 +244,7 @@ export default function AuctionDetailPage() {
                                 auctionId={auction.auction_id}
                                 currentPrice={displayPrice}
                                 remainingSupply={auction.remaining_supply}
-                                onSuccess={() => {
-                                    // Refresh auction data
-                                    api.getAuction(auction.auction_id).then(setAuction);
-                                }}
+                                onSuccess={() => loadAuction(auction.auction_id)}
                             />
                         )}
                     </div>

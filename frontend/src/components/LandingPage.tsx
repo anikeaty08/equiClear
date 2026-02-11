@@ -35,7 +35,7 @@ export function LandingPage() {
         {
             icon: <Coins size={32} />,
             title: 'Real Credits',
-            description: 'Deposit and bid with real Aleo testnet credits - fully on-chain',
+            description: 'Bid with real Aleo credits - pay only when you win, no deposits needed',
             color: 'rgba(16, 185, 129, 0.2)',
             iconColor: '#10b981'
         },
@@ -306,9 +306,9 @@ export function LandingPage() {
                     <div className="grid grid-cols-4" style={{ gap: 'var(--space-lg)' }}>
                         {[
                             { step: '1', title: 'Connect Wallet', desc: 'Link your Puzzle or Leo wallet' },
-                            { step: '2', title: 'Deposit Credits', desc: 'Add Aleo testnet credits to your balance' },
-                            { step: '3', title: 'Place Bids', desc: 'Submit private bids on active auctions' },
-                            { step: '4', title: 'Settle & Claim', desc: 'Winners pay clearing price, losers get refunds' }
+                            { step: '2', title: 'Place Bids', desc: 'Submit private bids - no deposit needed' },
+                            { step: '3', title: 'Auction Settles', desc: 'Owner settles with uniform clearing price' },
+                            { step: '4', title: 'Redeem & Pay', desc: 'Winners pay atomically via credits transfer' }
                         ].map((item, i) => (
                             <div key={i} style={{ textAlign: 'center' }}>
                                 <div style={{

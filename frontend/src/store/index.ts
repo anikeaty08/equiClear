@@ -1,6 +1,6 @@
 // EquiClear Global State Store
 import { create } from 'zustand';
-import { Auction, Claim } from '@/services/api';
+import { Auction } from '@/services/aleo';
 
 interface WalletState {
     connected: boolean;
@@ -21,9 +21,11 @@ interface AppState {
     selectedAuction: Auction | null;
     setSelectedAuction: (auction: Auction | null) => void;
 
+    // Known auction IDs (tracked locally since on-chain mappings aren't enumerable)
+    knownAuctionIds: string[];
+    addAuctionId: (id: string) => void;
+
     // User Data
-    userClaims: Claim[];
-    setUserClaims: (claims: Claim[]) => void;
     userBalance: number;
     setUserBalance: (balance: number) => void;
 
@@ -48,7 +50,7 @@ interface Notification {
 
 export interface Transaction {
     id: string;
-    type: 'deposit' | 'withdraw' | 'bid' | 'refund' | 'claim' | 'transfer';
+    type: 'bid' | 'redeem' | 'create_auction' | 'settle' | 'cancel';
     amount: number;
     timestamp: string;
     status: 'pending' | 'completed' | 'failed';
@@ -60,6 +62,17 @@ const initialWalletState: WalletState = {
     address: null,
     balance: 0,
     network: 'testnet',
+};
+
+// Load known auction IDs from localStorage
+const loadKnownAuctionIds = (): string[] => {
+    if (typeof window === 'undefined') return [];
+    try {
+        const stored = localStorage.getItem('equiclear_auction_ids');
+        return stored ? JSON.parse(stored) : [];
+    } catch {
+        return [];
+    }
 };
 
 export const useStore = create<AppState>()((set, get) => ({
@@ -77,9 +90,22 @@ export const useStore = create<AppState>()((set, get) => ({
     selectedAuction: null,
     setSelectedAuction: (auction) => set({ selectedAuction: auction }),
 
+    // Known auction IDs
+    knownAuctionIds: loadKnownAuctionIds(),
+    addAuctionId: (id) => {
+        set((state) => {
+            const ids = state.knownAuctionIds.includes(id)
+                ? state.knownAuctionIds
+                : [...state.knownAuctionIds, id];
+            // Persist to localStorage
+            if (typeof window !== 'undefined') {
+                localStorage.setItem('equiclear_auction_ids', JSON.stringify(ids));
+            }
+            return { knownAuctionIds: ids };
+        });
+    },
+
     // User Data
-    userClaims: [],
-    setUserClaims: (claims) => set({ userClaims: claims }),
     userBalance: 0,
     setUserBalance: (balance) => set({ userBalance: balance }),
 
@@ -92,7 +118,6 @@ export const useStore = create<AppState>()((set, get) => ({
         set((state) => ({
             notifications: [...state.notifications, { ...notification, id }],
         }));
-        // Auto-remove after 5 seconds
         setTimeout(() => {
             get().removeNotification(id);
         }, 5000);

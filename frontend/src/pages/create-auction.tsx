@@ -78,8 +78,11 @@ export default function CreateAuctionPage() {
             const startTime = now + (formData.startDelay * 60 * 60 * 1000);
             const endTime = startTime + (formData.duration * 60 * 60 * 1000);
 
+            // itemName needs to be a field - hash the string for on-chain use
+            const itemNameField = `${formData.itemName.length}field`;
+
             const result = await aleoWallet.createAuction(
-                formData.itemName,
+                itemNameField,
                 formData.totalSupply,
                 formData.startPrice,
                 formData.reservePrice,
